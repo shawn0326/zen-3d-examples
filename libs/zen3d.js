@@ -223,10 +223,40 @@
     var BLEND_TYPE = {
         NONE: "none",
         NORMAL: "normal",
-        ADD: "add"
+        ADD: "add",
+        CUSTOM: "custom"
     };
 
     zen3d.BLEND_TYPE = BLEND_TYPE;
+
+    /**
+     * BLEND_EQUATION
+     */
+    var BLEND_EQUATION = {
+        ADD: 0x8006,
+        SUBTRACT: 0x800A,
+        REVERSE_SUBTRACT: 0x800B
+    };
+
+    zen3d.BLEND_EQUATION = BLEND_EQUATION;
+
+    /**
+     * BLEND_FACTOR
+     */
+    var BLEND_FACTOR = {
+        ZERO: 0,
+        ONE: 1,
+        SRC_COLOR: 0x0300,
+        ONE_MINUS_SRC_COLOR: 0x0301,
+        SRC_ALPHA: 0x0302,
+        ONE_MINUS_SRC_ALPHA: 0x0303,
+        DST_ALPHA: 0x0304,
+        ONE_MINUS_DST_ALPHA: 0x0305,
+        DST_COLOR: 0x0306,
+        ONE_MINUS_DST_COLOR: 0x0307
+    };
+
+    zen3d.BLEND_FACTOR = BLEND_FACTOR;
 
     /**
      * CULL_FACE_TYPE
@@ -3598,6 +3628,7 @@
     var BLEND_TYPE = zen3d.BLEND_TYPE;
     var CULL_FACE_TYPE = zen3d.CULL_FACE_TYPE;
 
+
     function createTexture(gl, type, target, count) {
         var data = new Uint8Array(4); // 4 is required to match default unpack alignment of 4.
         var texture = gl.createTexture();
@@ -3620,6 +3651,14 @@
         this.states = {};
 
         this.currentBlending = null;
+
+        this.currentBlendEquation = null;
+        this.currentBlendSrc = null;
+        this.currentBlendDst = null;
+        this.currentBlendEquationAlpha = null;
+        this.currentBlendSrcAlpha = null;
+        this.currentBlendDstAlpha = null;
+            
         this.currentPremultipliedAlpha = null;
 
         this.currentCullFace = null;
@@ -3662,7 +3701,7 @@
         this.currentRenderTarget = null;
     }
 
-    WebGLState.prototype.setBlend = function(blend, premultipliedAlpha) {
+    WebGLState.prototype.setBlend = function(blend, blendEquation, blendSrc, blendDst, blendEquationAlpha, blendSrcAlpha, blendDstAlpha, premultipliedAlpha) {
         var gl = this.gl;
 
         if (blend !== BLEND_TYPE.NONE) {
@@ -3671,31 +3710,65 @@
             this.disable(gl.BLEND);
         }
 
-        if (blend !== this.currentBlending || premultipliedAlpha !== this.currentPremultipliedAlpha) {
+        if(blend !== BLEND_TYPE.CUSTOM) {
+            if (blend !== this.currentBlending || premultipliedAlpha !== this.currentPremultipliedAlpha) {
 
-            if (blend === BLEND_TYPE.NORMAL) {
-                if (premultipliedAlpha) {
-                    gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
-                    gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                } else {
-                    gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
-                    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+                if (blend === BLEND_TYPE.NORMAL) {
+                    if (premultipliedAlpha) {
+                        gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
+                        gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+                    } else {
+                        gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
+                        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+                    }
                 }
+    
+                if (blend === BLEND_TYPE.ADD) {
+                    if (premultipliedAlpha) {
+                        gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
+                        gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE);
+                    } else {
+                        gl.blendEquation(gl.FUNC_ADD);
+                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                    }
+                }
+     
             }
 
-            if (blend === BLEND_TYPE.ADD) {
-                if (premultipliedAlpha) {
-                    gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
-                    gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE);
-                } else {
-                    gl.blendEquation(gl.FUNC_ADD);
-                    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-                }
-            }
+            this.currentBlendEquation = null;
+            this.currentBlendSrc = null;
+            this.currentBlendDst = null;
+            this.currentBlendEquationAlpha = null;
+            this.currentBlendSrcAlpha = null;
+            this.currentBlendDstAlpha = null;
+        } else {
+            blendEquationAlpha = blendEquationAlpha || blendEquation;
+			blendSrcAlpha = blendSrcAlpha || blendSrc;
+            blendDstAlpha = blendDstAlpha || blendDst;
+            
+            if ( blendEquation !== this.currentBlendEquation || blendEquationAlpha !== this.currentBlendEquationAlpha ) {
 
-            this.currentBlending = blend;
-            this.currentPremultipliedAlpha = premultipliedAlpha;
+				gl.blendEquationSeparate( blendEquation, blendEquationAlpha );
+
+				this.currentBlendEquation = blendEquation;
+				this.currentBlendEquationAlpha = blendEquationAlpha;
+
+			}
+
+			if ( blendSrc !== this.currentBlendSrc || blendDst !== this.currentBlendDst || blendSrcAlpha !== this.currentBlendSrcAlpha || blendDstAlpha !== this.currentBlendDstAlpha ) {
+
+				gl.blendFuncSeparate( blendSrc, blendDst, blendSrcAlpha, blendDstAlpha );
+
+				this.currentBlendSrc = blendSrc;
+				this.currentBlendDst = blendDst;
+				this.currentBlendSrcAlpha = blendSrcAlpha;
+				this.currentBlendDstAlpha = blendDstAlpha;
+
+			}
         }
+
+        this.currentBlending = blend;
+        this.currentPremultipliedAlpha = premultipliedAlpha;
     }
 
     WebGLState.prototype.setFlipSided = function(flipSided) {
@@ -4685,6 +4758,20 @@
 })();
 (function() {
 
+    function addLineNumbers( string ) {
+
+    	var lines = string.split( '\n' );
+
+    	for ( var i = 0; i < lines.length; i ++ ) {
+
+    		lines[ i ] = ( i + 1 ) + ': ' + lines[ i ];
+
+    	}
+
+    	return lines.join( '\n' );
+
+    }
+
     /**
      * create a shader
      **/
@@ -4698,8 +4785,7 @@
         // if compile failed, log error
         var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
         if (!compiled) {
-            console.log("shader not compiled!")
-            console.log(gl.getShaderInfoLog(shader))
+            console.warn("shader not compiled!", gl.getShaderInfoLog(shader), addLineNumbers(source));
         }
 
         return shader;
@@ -4719,8 +4805,7 @@
         // if link failed, log error
         var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
         if(!linked) {
-            console.log("program not linked!")
-            console.log(gl.getProgramInfoLog(program))
+            console.warn("program not linked!", gl.getProgramInfoLog(program));
         }
 
         return program;
@@ -4769,7 +4854,7 @@
     var WebGLProgram = function(gl, vshader, fshader) {
 
         this.uuid = zen3d.generateUUID();
-        
+
         // vertex shader source
         this.vshaderSource = vshader;
 
@@ -4879,13 +4964,46 @@
     }
 
     /**
+     * Render opaque and transparent objects
+     * @param {zen3d.Scene} scene 
+     * @param {zen3d.Camera} camera 
+     * @param {boolean} renderUI? default is false.
+     */
+    WebGLCore.prototype.render = function(scene, camera, renderUI) {
+        var renderList = scene.updateRenderList(camera);
+
+        this.renderPass(renderList.opaque, camera, {
+            scene: scene,
+            getMaterial: function(renderable) {
+                return scene.overrideMaterial || renderable.material;
+            }
+        });
+
+        this.renderPass(renderList.transparent, camera, {
+            scene: scene,
+            getMaterial: function(renderable) {
+                return scene.overrideMaterial || renderable.material;
+            }
+        });
+
+        if(!!renderUI) {
+            this.renderPass(renderList.ui, camera, {
+                scene: scene,
+                getMaterial: function(renderable) {
+                    return scene.overrideMaterial || renderable.material;
+                }
+            });
+        }
+    }
+
+    /**
      * Render a single renderable list in camera in sequence
      * @param {Array} list List of all renderables.
      * @param {zen3d.Camera} camera Camera provide view matrix and porjection matrix.
-     * @param {Object} [config] ?
-     * @param {Function} [config.getMaterial] Get renderable material.
-     * @param {Function} [config.ifRender] If render the renderable.
-     * @param {RenderCache} [config.cache] render cache
+     * @param {Object} [config]?
+     * @param {Function} [config.getMaterial]? Get renderable material.
+     * @param {Function} [config.ifRender]? If render the renderable.
+     * @param {zen3d.Scene} [config.scene]? Rendering scene, have some rendering context.
      */
     WebGLCore.prototype.renderPass = function(renderList, camera, config) {
         config = config || {};
@@ -4894,7 +5012,7 @@
         var state = this.state;
 
         var getMaterial = config.getMaterial || defaultGetMaterial;
-        var cache = config.cache || {};
+        var scene = config.scene || {};
         
         var targetWidth = state.currentRenderTarget.width;
         var targetHeight = state.currentRenderTarget.height;
@@ -4911,7 +5029,7 @@
             var geometry = renderItem.geometry;
             var group = renderItem.group;
 
-            var program = zen3d.getProgram(this, camera, material, object, cache);
+            var program = zen3d.getProgram(this, camera, material, object, scene);
             state.setProgram(program);
 
             this.geometry.setGeometry(geometry);
@@ -5044,17 +5162,17 @@
                         uniform.setValue(helpVector3.x, helpVector3.y, helpVector3.z);
                         break;
                     case "u_FogColor":
-                        var color = cache.fog.color;
+                        var color = scene.fog.color;
                         uniform.setValue(color.r, color.g, color.b);
                         break;
                     case "u_FogDensity":
-                        uniform.setValue(cache.fog.density);
+                        uniform.setValue(scene.fog.density);
                         break;
                     case "u_FogNear":
-                        uniform.setValue(cache.fog.near);
+                        uniform.setValue(scene.fog.near);
                         break;
                     case "u_FogFar":
-                        uniform.setValue(cache.fog.far);
+                        uniform.setValue(scene.fog.far);
                         break;
                     case "u_PointSize":
                         uniform.setValue(material.size);
@@ -5073,12 +5191,12 @@
                         uniform.setValue(material.scale);
                         break;
                     case "clippingPlanes[0]":
-                        var planesData = getClippingPlanesData(cache.clippingPlanes || [], camera);
+                        var planesData = getClippingPlanesData(scene.clippingPlanes || [], camera);
                         gl.uniform4fv(uniform.location, planesData);
                         break;
                     default:
                         // upload custom uniforms
-                        if(material.uniforms && material.uniforms[key]) {
+                        if(material.uniforms && material.uniforms[key] !== undefined) {
                             if(uniform.type === WEBGL_UNIFORM_TYPE.SAMPLER_2D) {
                                 var slot = this.allocTexUnit();
                                 this.texture.setTexture2D(material.uniforms[key], slot);
@@ -5101,15 +5219,15 @@
             }
 
             if(object.type === zen3d.OBJECT_TYPE.SPRITE) {
-                this.uploadSpriteUniform(uniforms, object, camera, cache.fog);
+                this.uploadSpriteUniform(uniforms, object, camera, scene.fog);
             }
             
             if(object.type === zen3d.OBJECT_TYPE.PARTICLE) {
                 this.uploadParticlesUniform(uniforms, object, camera);
             }
 
-            if (material.acceptLight && cache.lights) {
-                this.uploadLights(uniforms, cache.lights, object.receiveShadow, camera);
+            if (material.acceptLight && scene.lights) {
+                this.uploadLights(uniforms, scene.lights, object.receiveShadow, camera);
             }
 
             var frontFaceCW = object.worldMatrix.determinant() < 0;
@@ -5170,7 +5288,7 @@
 
         // set blend
         if (material.transparent) {
-            state.setBlend(material.blending, material.premultipliedAlpha);
+            state.setBlend(material.blending, material.blendEquation, material.blendSrc, material.blendDst, material.blendEquationAlpha, material.blendSrcAlpha, material.blendDstAlpha, material.premultipliedAlpha);
         } else {
             state.setBlend(BLEND_TYPE.NONE);
         }
@@ -5658,6 +5776,8 @@ lambert_frag: "#include <common_frag>\nuniform vec3 emissive;\n#include <uv_pars
 lambert_vert: "#include <common_vert>\n#include <normal_pars_vert>\n#include <uv_pars_vert>\n#include <color_pars_vert>\n#include <viewModelPos_pars_vert>\n#include <envMap_pars_vert>\n#include <shadowMap_pars_vert>\n#include <skinning_pars_vert>\nvoid main() {\n    #include <begin_vert>\n    #include <skinning_vert>\n    #include <pvm_vert>\n    #include <normal_vert>\n    #include <uv_vert>\n    #include <color_vert>\n    #include <viewModelPos_vert>\n    #include <envMap_vert>\n    #include <shadowMap_vert>\n}",
 linedashed_frag: "#include <common_frag>\n#include <fog_pars_frag>\nuniform float dashSize;\nuniform float totalSize;\nvarying float vLineDistance;\nvoid main() {\n    if ( mod( vLineDistance, totalSize ) > dashSize ) {\n\t\tdiscard;\n\t}\n    #include <begin_frag>\n    #include <end_frag>\n    #include <premultipliedAlpha_frag>\n    #include <fog_frag>\n}",
 linedashed_vert: "#include <common_vert>\nuniform float scale;\nattribute float lineDistance;\nvarying float vLineDistance;\nvoid main() {\n    vLineDistance = scale * lineDistance;\n    vec3 transformed = vec3(a_Position);\n    #include <pvm_vert>\n}",
+normaldepth_frag: "#include <common_frag>\n#define USE_NORMAL\n#include <packing>\n#include <normal_pars_frag>\nvoid main() {\n    vec4 packedNormalDepth;\n    packedNormalDepth.xyz = normalize(v_Normal) * 0.5 + 0.5;\n    packedNormalDepth.w = gl_FragCoord.z;\n    gl_FragColor = packedNormalDepth;\n}",
+normaldepth_vert: "#include <common_vert>\n#define USE_NORMAL\n#include <skinning_pars_vert>\n#include <normal_pars_vert>\nvoid main() {\n    #include <begin_vert>\n    #include <skinning_vert>\n    #include <normal_vert>\n    #include <pvm_vert>\n}",
 particle_frag: "float scaleLinear(float value, vec2 valueDomain) {\n    return (value - valueDomain.x) / (valueDomain.y - valueDomain.x);\n}\nfloat scaleLinear(float value, vec2 valueDomain, vec2 valueRange) {\n    return mix(valueRange.x, valueRange.y, scaleLinear(value, valueDomain));\n}\nvarying vec4 vColor;\nvarying float lifeLeft;\nuniform sampler2D tSprite;\nvoid main() {\n    float alpha = 0.;\n    if( lifeLeft > .995 ) {\n        alpha = scaleLinear( lifeLeft, vec2(1., .995), vec2(0., 1.));\n    } else {\n        alpha = lifeLeft * .75;\n    }\n    vec4 tex = texture2D( tSprite, gl_PointCoord );\n    gl_FragColor = vec4( vColor.rgb * tex.a, alpha * tex.a );\n}",
 particle_vert: "const vec4 bitSh = vec4(256. * 256. * 256., 256. * 256., 256., 1.);\nconst vec4 bitMsk = vec4(0.,vec3(1./256.0));\nconst vec4 bitShifts = vec4(1.) / bitSh;\n#define FLOAT_MAX\t1.70141184e38\n#define FLOAT_MIN\t1.17549435e-38\nlowp vec4 encode_float(highp float v) {\n    highp float av = abs(v);\n    if(av < FLOAT_MIN) {\n        return vec4(0.0, 0.0, 0.0, 0.0);\n    } else if(v > FLOAT_MAX) {\n        return vec4(127.0, 128.0, 0.0, 0.0) / 255.0;\n    } else if(v < -FLOAT_MAX) {\n        return vec4(255.0, 128.0, 0.0, 0.0) / 255.0;\n    }\n    highp vec4 c = vec4(0,0,0,0);\n    highp float e = floor(log2(av));\n    highp float m = av * pow(2.0, -e) - 1.0;\n    c[1] = floor(128.0 * m);\n    m -= c[1] / 128.0;\n    c[2] = floor(32768.0 * m);\n    m -= c[2] / 32768.0;\n    c[3] = floor(8388608.0 * m);\n    highp float ebias = e + 127.0;\n    c[0] = floor(ebias / 2.0);\n    ebias -= c[0] * 2.0;\n    c[1] += floor(ebias) * 128.0;\n    c[0] += 128.0 * step(0.0, -v);\n    return c / 255.0;\n}\nvec4 pack(const in float depth)\n{\n    const vec4 bit_shift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);\n    const vec4 bit_mask\t= vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);\n    vec4 res = mod(depth*bit_shift*vec4(255), vec4(256))/vec4(255);\n    res -= res.xxyz * bit_mask;\n    return res;\n}\nfloat unpack(const in vec4 rgba_depth)\n{\n    const vec4 bit_shift = vec4(1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1.0);\n    float depth = dot(rgba_depth, bit_shift);\n    return depth;\n}\nuniform float uTime;\nuniform float uScale;\nuniform sampler2D tNoise;\nuniform mat4 u_Projection;\nuniform mat4 u_View;\nuniform mat4 u_Model;\nattribute vec4 particlePositionsStartTime;\nattribute vec4 particleVelColSizeLife;\nvarying vec4 vColor;\nvarying float lifeLeft;\nvoid main() {\n    vColor = encode_float( particleVelColSizeLife.y );\n    vec4 velTurb = encode_float( particleVelColSizeLife.x );\n    vec3 velocity = vec3( velTurb.xyz );\n    float turbulence = velTurb.w;\n    vec3 newPosition;\n    float timeElapsed = uTime - particlePositionsStartTime.a;\n    lifeLeft = 1. - (timeElapsed / particleVelColSizeLife.w);\n    gl_PointSize = ( uScale * particleVelColSizeLife.z ) * lifeLeft;\n    velocity.x = ( velocity.x - .5 ) * 3.;\n    velocity.y = ( velocity.y - .5 ) * 3.;\n    velocity.z = ( velocity.z - .5 ) * 3.;\n    newPosition = particlePositionsStartTime.xyz + ( velocity * 10. ) * ( uTime - particlePositionsStartTime.a );\n    vec3 noise = texture2D( tNoise, vec2( newPosition.x * .015 + (uTime * .05), newPosition.y * .02 + (uTime * .015) )).rgb;\n    vec3 noiseVel = ( noise.rgb - .5 ) * 30.;\n    newPosition = mix(newPosition, newPosition + vec3(noiseVel * ( turbulence * 5. ) ), (timeElapsed / particleVelColSizeLife.a) );\n    if( velocity.y > 0. && velocity.y < .05 ) {\n        lifeLeft = 0.;\n    }\n    if( velocity.x < -1.45 ) {\n        lifeLeft = 0.;\n    }\n    if( timeElapsed > 0. ) {\n        gl_Position = u_Projection * u_View * u_Model * vec4( newPosition, 1.0 );\n    } else {\n        gl_Position = u_Projection * u_View * u_Model * vec4( particlePositionsStartTime.xyz, 1.0 );\n        lifeLeft = 0.;\n        gl_PointSize = 0.;\n    }\n}",
 pbr_frag: "#include <common_frag>\nuniform float u_Metalness;\n#ifdef USE_METALNESSMAP\n\tuniform sampler2D metalnessMap;\n#endif\nuniform float u_Roughness;\n#ifdef USE_ROUGHNESSMAP\n\tuniform sampler2D roughnessMap;\n#endif\nuniform vec3 emissive;\n#include <uv_pars_frag>\n#include <color_pars_frag>\n#include <diffuseMap_pars_frag>\n#include <normalMap_pars_frag>\n#include <bumpMap_pars_frag>\n#include <envMap_pars_frag>\n#include <aoMap_pars_frag>\n#include <light_pars_frag>\n#include <normal_pars_frag>\n#include <viewModelPos_pars_frag>\n#include <bsdfs>\n#include <shadowMap_pars_frag>\n#include <fog_pars_frag>\n#include <emissiveMap_pars_frag>\n#include <clippingPlanes_pars_frag>\nvoid main() {\n    #include <clippingPlanes_frag>\n    #include <begin_frag>\n    #include <color_frag>\n    #include <diffuseMap_frag>\n    #include <normal_frag>\n    #include <specularMap_frag>\n    float roughnessFactor = u_Roughness;\n    #ifdef USE_ROUGHNESSMAP\n    \tvec4 texelRoughness = texture2D( roughnessMap, v_Uv );\n    \troughnessFactor *= texelRoughness.g;\n    #endif\n    float metalnessFactor = u_Metalness;\n    #ifdef USE_METALNESSMAP\n    \tvec4 texelMetalness = texture2D( metalnessMap, v_Uv );\n    \tmetalnessFactor *= texelMetalness.b;\n    #endif\n    #include <light_frag>\n    #include <shadowMap_frag>\n    vec3 totalEmissiveRadiance = emissive;\n    #include <emissiveMap_frag>\n    outColor += vec4(totalEmissiveRadiance.rgb, 0.0);\n    #include <end_frag>\n    #include <encodings_frag>\n    #include <premultipliedAlpha_frag>\n    #include <fog_frag>\n}",
@@ -5677,10 +5797,15 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     /**
      * generate program code
      */
-    function generateProgramCode(props) {
+    function generateProgramCode(props, material) {
         var code = "";
         for (var key in props) {
             code += props[key] + "_";
+        }
+        if(material.defines !== undefined) {
+            for (var name in material.defines) {
+                code += name + "_" + material.defines[ name ] + "_";
+			}
         }
         return code;
     }
@@ -5753,10 +5878,28 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
 
     }
 
+    function generateDefines( defines ) {
+
+    	var chunks = [];
+
+    	for ( var name in defines ) {
+
+    		var value = defines[ name ];
+
+    		if ( value === false ) continue;
+
+    		chunks.push( '#define ' + name + ' ' + value );
+
+    	}
+
+    	return chunks.join( '\n' );
+
+    }
+
     /**
      * create program
      */
-    function createProgram(gl, props, vertexCode, fragmentCode) {
+    function createProgram(gl, props, defines) {
         // vertexCode & fragmentCode
         var vertex = zen3d.ShaderLib[props.materialType + "_vert"] || props.vertexShader || zen3d.ShaderLib.basic_vert;
         var fragment = zen3d.ShaderLib[props.materialType + "_frag"] || props.fragmentShader || zen3d.ShaderLib.basic_frag;
@@ -5765,7 +5908,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
 
         // create defines
         var vshader_define = [
-            ''
+            '',
+            defines
         ],
         fshader_define = [
             '#define PI 3.14159265359',
@@ -5774,7 +5918,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
             '#define LOG2 1.442695',
             '#define RECIPROCAL_PI 0.31830988618',
             '#define saturate(a) clamp( a, 0.0, 1.0 )',
-            '#define whiteCompliment(a) ( 1.0 - saturate( a ) )'
+            '#define whiteCompliment(a) ( 1.0 - saturate( a ) )',
+            defines
         ];
         switch (props.materialType) {
             case MATERIAL_TYPE.CUBE:
@@ -6027,14 +6172,18 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
                 break;
         }
 
-        var code = generateProgramCode(props);
+        var code = generateProgramCode(props, material);
         var map = programMap;
         var program;
 
         if (map[code]) {
             program = map[code];
         } else {
-            program = createProgram(gl, props);
+            var customDefines = "";
+            if(material.defines !== undefined) {
+                customDefines = generateDefines(material.defines);
+            }
+            program = createProgram(gl, props, customDefines);
 
             map[code] = program;
         }
@@ -6045,7 +6194,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     zen3d.getProgram = getProgram;
 })();
 (function() {
-    var EnvironmentMapPass = function() {
+    var EnvironmentMapPass = function(renderTarget) {
         this.camera = new zen3d.Camera();
 
         this.targets = [
@@ -6062,25 +6211,13 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.position = new zen3d.Vector3();
         this.lookTarget = new zen3d.Vector3();
 
-        this.renderTarget = new zen3d.RenderTargetCube(512, 512);
+        this.renderTarget = renderTarget || new zen3d.RenderTargetCube(512, 512);
 		this.renderTexture = this.renderTarget.texture;
         this.renderTexture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR_MIPMAP_LINEAR;
-        
-        this.shadowMapPass = new zen3d.ShadowMapPass();
-        this.forwardPass = new zen3d.ForwardPass();
-
-        this.shadowAutoUpdate = true;
-        this.shadowNeedsUpdate = false;
     }
 
     EnvironmentMapPass.prototype.render = function(glCore, scene) {
         this.camera.position.copy(this.position);
-
-        if ( this.shadowAutoUpdate || this.shadowNeedsUpdate ) {
-            this.shadowMapPass.render(glCore, scene);
-
-            this.shadowNeedsUpdate = false;
-        }
 
         for(var i = 0; i < 6; i++) {
             this.lookTarget.set(this.targets[i].x + this.camera.position.x, this.targets[i].y + this.camera.position.y, this.targets[i].z + this.camera.position.z);
@@ -6095,7 +6232,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
             glCore.state.clearColor(0, 0, 0, 0);
             glCore.clear(true, true, true);
 
-            this.forwardPass.render(glCore, scene, this.camera);
+            glCore.render(scene, this.camera);
 
             glCore.texture.updateRenderTargetMipmap(this.renderTarget);
         }
@@ -6184,41 +6321,6 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     zen3d.ShadowMapPass = ShadowMapPass;
 })();
 (function() {
-    var LAYER_RENDER_LIST = zen3d.LAYER_RENDER_LIST;
-
-    var ForwardPass = function() {
-        
-    }
-
-    ForwardPass.prototype.render = function(glCore, scene, camera) {
-        var renderList = scene.updateRenderList(camera);
-
-        glCore.renderPass(renderList.opaque, camera, {
-            getMaterial: function(renderable) {
-                return scene.overrideMaterial || renderable.material;
-            },
-            cache: scene
-        });
-
-        glCore.renderPass(renderList.transparent, camera, {
-            getMaterial: function(renderable) {
-                return scene.overrideMaterial || renderable.material;
-            },
-            cache: scene
-        });
-
-        // remove UI render from this pass
-        glCore.renderPass(renderList.ui, camera, {
-            getMaterial: function(renderable) {
-                return scene.overrideMaterial || renderable.material;
-            },
-            cache: scene
-        });
-    }
-
-    zen3d.ForwardPass = ForwardPass;
-})();
-(function() {
     function cloneUniforms(uniforms_src) {
         var uniforms_dst = {};
 
@@ -6239,6 +6341,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         var scene = new zen3d.Scene();
 
         var camera = this.camera = new zen3d.Camera();
+        camera.frustumCulled = false;
         camera.position.set(0, 1, 0);
         camera.setLookAt(new zen3d.Vector3(0, 0, 0), new zen3d.Vector3(0, 0, -1));
         camera.setOrtho(-1, 1, -1, 1, 0.1, 2);
@@ -6247,9 +6350,12 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         var geometry = new zen3d.PlaneGeometry(2, 2, 1, 1);
         this.uniforms = cloneUniforms(shader.uniforms);
         var material = this.material = new zen3d.ShaderMaterial(shader.vertexShader, shader.fragmentShader, this.uniforms);
+        Object.assign( material.defines, shader.defines ); // copy defines
         var plane = new zen3d.Mesh(geometry, material);
+        plane.frustumCulled = false;
         scene.add(plane);
 
+        // static scene
         scene.updateMatrix();
         this.renderList = scene.updateRenderList(camera);
     }
@@ -6282,7 +6388,6 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.performance = new zen3d.Performance();
 
         this.shadowMapPass = new zen3d.ShadowMapPass();
-        this.forwardPass = new zen3d.ForwardPass();
 
         this.shadowAutoUpdate = true;
         this.shadowNeedsUpdate = false;
@@ -6325,7 +6430,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         }
 
         performance.startCounter("renderList", 60);
-        this.forwardPass.render(this.glCore, scene, camera);
+        this.glCore.render(scene, camera, true);
         performance.endCounter("renderList");
 
         if (!!renderTarget.texture) {
@@ -7817,6 +7922,9 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     zen3d.TextureData = TextureData;
 })();
 (function() {
+    var BLEND_EQUATION = zen3d.BLEND_EQUATION;
+    var BLEND_FACTOR = zen3d.BLEND_FACTOR;
+
     /**
      * base material class
      * @class
@@ -7829,6 +7937,16 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.opacity = 1;
 
         this.transparent = false;
+
+        //blending
+        this.blending = zen3d.BLEND_TYPE.NORMAL;
+
+        this.blendSrc = BLEND_FACTOR.SRC_ALPHA;
+        this.blendDst = BLEND_FACTOR.ONE_MINUS_SRC_ALPHA;
+        this.blendEquation = BLEND_EQUATION.ADD;
+        this.blendSrcAlpha = null;
+        this.blendDstAlpha = null;
+        this.blendEquationAlpha = null;
 
         this.premultipliedAlpha = false;
 
@@ -7859,9 +7977,6 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.emissive = new zen3d.Color3(0x000000);
         this.emissiveMap = null;
         this.emissiveIntensity = 1;
-
-        //blending
-        this.blending = zen3d.BLEND_TYPE.NORMAL;
 
         // depth test
         this.depthTest = true;
@@ -8211,6 +8326,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.vertexShader = vertexShader || "";
 
         this.fragmentShader = fragmentShader || "";
+
+        this.defines = {};
 
         // uniforms should match fragment shader
         this.uniforms = uniforms || {};
