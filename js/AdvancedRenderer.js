@@ -109,8 +109,47 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
     glCore.state.clearColor(0, 0, 0, 1);
     glCore.clear(true, true, true);
 
-    scene.overrideMaterial = this.normalDepthMaterial;
-    glCore.render(scene, camera);
+    // scene.overrideMaterial = this.normalDepthMaterial;
+    // glCore.render(scene, camera);
+
+    var normalDepthMaterial = this.normalDepthMaterial;
+    var renderList = scene.updateRenderList(camera);
+
+    glCore.renderPass(renderList.opaque, camera, {
+        scene: scene,
+        getMaterial: function(renderable) {
+            var material = normalDepthMaterial;
+
+            // for alpha cut in ssao
+            // ignore if alpha < 0.99
+            if(renderable.material.diffuseMap) { 
+                material.defines["USE_DIFFUSE_MAP"] = "";
+                material.diffuseMap = renderable.material.diffuseMap;
+            } else {
+                material.defines["USE_DIFFUSE_MAP"] = false;
+                material.diffuseMap = null;
+            }
+
+            return material;
+        }
+    });
+
+    glCore.renderPass(renderList.transparent, camera, {
+        scene: scene,
+        getMaterial: function(renderable) {
+            var material = normalDepthMaterial;
+
+            if(renderable.material.diffuseMap) {
+                material.defines["USE_DIFFUSE_MAP"] = "";
+                material.diffuseMap = renderable.material.diffuseMap;
+            } else {
+                material.defines["USE_DIFFUSE_MAP"] = false;
+                material.diffuseMap = null;
+            }
+
+            return material;
+        }
+    });
 
     glCore.texture.setRenderTarget(this.tempRenderTarget2);
 
