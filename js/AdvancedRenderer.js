@@ -124,9 +124,11 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
             // ignore if alpha < 0.99
             if(renderable.material.diffuseMap) { 
                 material.defines["USE_DIFFUSE_MAP"] = "";
+                material.defines["ALPHATEST"] = 0.999;
                 material.diffuseMap = renderable.material.diffuseMap;
             } else {
                 material.defines["USE_DIFFUSE_MAP"] = false;
+                material.defines["ALPHATEST"] = false;
                 material.diffuseMap = null;
             }
 
@@ -141,9 +143,11 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
 
             if(renderable.material.diffuseMap) {
                 material.defines["USE_DIFFUSE_MAP"] = "";
+                material.defines["ALPHATEST"] = 0.999;
                 material.diffuseMap = renderable.material.diffuseMap;
             } else {
                 material.defines["USE_DIFFUSE_MAP"] = false;
+                material.defines["ALPHATEST"] = false;
                 material.diffuseMap = null;
             }
 
