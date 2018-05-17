@@ -78,7 +78,7 @@ var AdvancedRenderer = function(canvas) {
     this.colorAdjustPass.uniforms["brightness"] = 0;
     this.colorAdjustPass.uniforms["contrast"] = 1;
     this.colorAdjustPass.uniforms["exposure"] = 0.1;
-    this.colorAdjustPass.uniforms["gamma"] = 0.6;
+    this.colorAdjustPass.uniforms["gamma"] = 0.5;
     this.colorAdjustPass.uniforms["saturation"] =  1.1;
 
     this.fxaaPass = new zen3d.ShaderPostPass(zen3d.FXAAShader);

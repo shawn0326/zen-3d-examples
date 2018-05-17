@@ -148,6 +148,24 @@
 	}
     zen3d.nextPowerOfTwo = nextPowerOfTwo;
 
+    var cloneUniforms = function(uniforms_src) {
+        var uniforms_dst = {};
+
+        for(var name in uniforms_src) {
+            var uniform_src = uniforms_src[name];
+            // TODO zen3d object clone
+            if ( Array.isArray( uniform_src ) ) {
+                uniforms_dst[name] = uniform_src.slice();
+            } else {
+                uniforms_dst[name] = uniform_src;
+            }
+        }
+
+        return uniforms_dst;
+    }
+
+    zen3d.cloneUniforms = cloneUniforms;
+
 })(window);
 
 (function() {
@@ -4949,6 +4967,7 @@
         var state = new zen3d.WebGLState(gl, capabilities);
         state.enable(gl.STENCIL_TEST);
         state.enable(gl.DEPTH_TEST);
+        gl.depthFunc( gl.LEQUAL );
         state.setCullFace(CULL_FACE_TYPE.BACK);
         state.setFlipSided(false);
         state.clearColor(0, 0, 0, 0);
@@ -8591,6 +8610,31 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
 
         };
     }();
+
+    /**
+     * set view by look at, this func will set quaternion of this camera
+     */
+    Object3D.prototype.setLookAt = function(target, up) {
+        var eye = this.position;
+
+        var zaxis = new zen3d.Vector3();
+        target.subtract(eye, zaxis); // right-hand coordinates system
+        zaxis.normalize();
+
+        var xaxis = new zen3d.Vector3();
+        xaxis.crossVectors(up, zaxis);
+        xaxis.normalize();
+
+        var yaxis = new zen3d.Vector3();
+        yaxis.crossVectors(zaxis, xaxis);
+
+        this.quaternion.setFromRotationMatrix(zen3d.helpMatrix.set(
+            xaxis.x, yaxis.x, zaxis.x, 0,
+            xaxis.y, yaxis.y, zaxis.y, 0,
+            xaxis.z, yaxis.z, zaxis.z, 0,
+            0, 0, 0, 1
+        ));
+    }
 
     /**
      * raycast

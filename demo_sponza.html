@@ -33,6 +33,9 @@
 	<script src="libs/shaders/FXAAShader.js"></script>
 
 	<script src="js/AdvancedRenderer.js"></script>
+
+	<script src="libs/shaders/SkyShader.js"></script>
+	<script src="libs/objects/Sky.js"></script>
 </head>
 <body>
 
@@ -59,20 +62,7 @@
 
 			var file = "./assets/models/gltf/sponza/sponza.gltf";
 
-			var cube_texture = zen3d.TextureCube.fromSrc([
-			    "./assets/skybox/skyboxsun25deg/px.jpg",
-			    "./assets/skybox/skyboxsun25deg/nx.jpg",
-			    "./assets/skybox/skyboxsun25deg/py.jpg",
-			    "./assets/skybox/skyboxsun25deg/ny.jpg",
-			    "./assets/skybox/skyboxsun25deg/pz.jpg",
-			    "./assets/skybox/skyboxsun25deg/nz.jpg"
-			]);
-
-			var sky_geom = new zen3d.CubeGeometry(5000, 5000, 5000, false);
-			var sky_material = new zen3d.CubeMaterial();
-			sky_material.cubeMap = cube_texture;
-			var sky_box = new zen3d.Mesh(sky_geom, sky_material);
-			scene.add(sky_box);
+			var sky = new zen3d.Sky();
 
 			let objectMaterial;
 
@@ -105,28 +95,26 @@
 			});
 
 			var ambientLight = new zen3d.AmbientLight();
-	        ambientLight.color.setHex(0x99aaaa);
-	        scene.add(ambientLight);
+	        ambientLight.color.setHex(0x778899);
+			scene.add(ambientLight);
 
 			// top light
 			var directionalLight = new zen3d.DirectionalLight();
-			directionalLight.color.setHex(0xffffff);
-			directionalLight.euler.set(Math.PI / 2, 0, 0);
-			directionalLight.intensity = 0.5;
+			directionalLight.intensity = 2;
 	        scene.add(directionalLight);
 
 			directionalLight.castShadow = true;
-			directionalLight.position.set(0, 250, 0);
 			directionalLight.shadow.cameraNear = 1;
-			directionalLight.shadow.cameraFar = 300;
-			directionalLight.shadow.windowSize = 350;
-			directionalLight.shadow.bias = -0.00001;
-			directionalLight.shadow.radius = 1;
-			directionalLight.shadow.mapSize.set(1024, 1024);
+			directionalLight.shadow.cameraFar = 1200;
+			directionalLight.shadow.windowSize = 800;
+			directionalLight.shadow.bias = -0.001;
+			directionalLight.shadow.radius = 0.5;
+			directionalLight.shadow.mapSize.set(2048, 2048);
 
 			var camera = new zen3d.Camera();
-	        camera.position.set(80, 30, 0);
-	        camera.setPerspective(45 / 180 * Math.PI, width / height, 0.1, 8000);
+	        camera.position.set(80, 5, -10);
+			camera.setPerspective(45 / 180 * Math.PI, width / height, 0.1, 8000);
+			camera.add(sky);
 			scene.add(camera);
 			
 			window.camera = camera;
@@ -179,6 +167,59 @@
 			colorFolder.add(renderer.colorAdjustPass.uniforms, "exposure").min(0).max(1).step(0.1);
 			colorFolder.add(renderer.colorAdjustPass.uniforms, "gamma").min(0).max(1).step(0.1);
 			colorFolder.add(renderer.colorAdjustPass.uniforms, "saturation").min(-1).max(5);
+
+			// sky
+			var effectController  = {
+				turbidity: 10,
+				rayleigh: 2,
+				mieCoefficient: 0.005,
+				mieDirectionalG: 0.95,
+				luminance: 1,
+				inclination: 0.0574,
+				azimuth: 0.25, // Facing front,
+				sun: ! true
+			};
+
+			var color1 = new zen3d.Color3(0.8, 0.8, 1);
+			var color2 = new zen3d.Color3(1, 0.7, 0.2);
+
+			function guiChanged() {
+
+				var uniforms = sky.material.uniforms;
+				uniforms.turbidity = effectController.turbidity;
+				uniforms.rayleigh = effectController.rayleigh;
+				uniforms.luminance = effectController.luminance;
+				uniforms.mieCoefficient = effectController.mieCoefficient;
+				uniforms.mieDirectionalG = effectController.mieDirectionalG;
+
+				var theta = Math.PI * ( effectController.inclination - 0.5 );
+				var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+
+				ambientLight.intensity = 1 - effectController.inclination - 0.1;
+
+				directionalLight.color.lerpColors(color1, color2, effectController.inclination * 2);
+				directionalLight.position.x = 450 * Math.cos( phi );
+				directionalLight.position.y = 450 * Math.sin( phi ) * Math.sin( theta );
+				directionalLight.position.z = 450 * Math.sin( phi ) * Math.cos( theta );
+				directionalLight.setLookAt(new zen3d.Vector3(), new zen3d.Vector3(0, 1, 0));
+
+				// scene.remove(sunSphere);
+				// effectController.sun && scene.add(sunSphere);
+
+				uniforms.sunPosition[0] = Math.cos( phi );
+				uniforms.sunPosition[1] = Math.sin( phi ) * Math.sin( theta );
+				uniforms.sunPosition[2] = Math.sin( phi ) * Math.cos( theta );
+
+				renderer.shadowDirty = true;
+
+				// renderer.render( scene, camera );
+
+			}
+
+			guiChanged();
+
+			var skyFolder = gui.addFolder('sky');
+			skyFolder.add( effectController, "inclination", 0, 0.5, 0.0001 ).onChange( guiChanged );
 
 	        function loop(count) {
 
