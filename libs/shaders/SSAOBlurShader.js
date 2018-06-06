@@ -2,7 +2,8 @@ zen3d.SSAOBlurShader = {
 
     defines: {
         "NORMALTEX_ENABLED": 1,
-        "DEPTHTEX_ENABLED": 1
+		"DEPTHTEX_ENABLED": 1,
+		'DEPTH_PACKING': 0
     },
 
     uniforms: {
@@ -10,7 +11,8 @@ zen3d.SSAOBlurShader = {
 		'textureSize': [512, 512],
 		'direction': 0, // 0 horizontal, 1 vertical
 		'blurSize': 1,
-		'normalDepthTex': null,
+		'normalTex': null,
+		'depthTex': null,
 		'projection': new Float32Array(16),
         'viewInverseTranspose': new Float32Array(16),
 		'depthRange': 0.05
@@ -37,6 +39,7 @@ zen3d.SSAOBlurShader = {
 	].join( "\n" ),
 
 	fragmentShader: [
+		"#include <packing>",
 
 		"varying vec2 v_Uv;",
 
@@ -49,7 +52,9 @@ zen3d.SSAOBlurShader = {
 
 		"uniform float blurSize;",
 
-        "uniform sampler2D normalDepthTex;",
+		"uniform sampler2D depthTex;",
+		
+		"uniform sampler2D normalTex;",
 
         "uniform mat4 projection;",
 
@@ -58,11 +63,15 @@ zen3d.SSAOBlurShader = {
         "uniform float depthRange;",
 
         "float getDepth( const in vec2 screenPosition ) {",
-            "return texture2D( normalDepthTex, screenPosition ).w;",
+			"#if DEPTH_PACKING == 1",
+				"return unpackRGBAToDepth( texture2D( depthTex, screenPosition ) );",
+			"#else",
+				"return texture2D( depthTex, screenPosition ).r;",
+			"#endif",
         "}",
 
         "vec3 getViewNormal( const in vec2 screenPosition ) {",
-            "vec3 normal = texture2D( normalDepthTex, screenPosition ).xyz * 2.0 - 1.0;",
+            "vec3 normal = texture2D( normalTex, screenPosition ).xyz * 2.0 - 1.0;",
             // Convert to view space
 			"return (viewInverseTranspose * vec4(normal, 0.0)).xyz;",
 		"}",

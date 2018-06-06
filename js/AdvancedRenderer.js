@@ -6,6 +6,8 @@ var AdvancedRenderer = function(canvas) {
         stencil: true
     });
 
+    var useDepthTexture = this.useDepthTexture = false;//!zen3d.isMobile;
+
     this.glCore = new zen3d.WebGLCore(gl);
 
     this.backRenderTarget = new zen3d.RenderTargetBack(canvas);
@@ -13,11 +15,20 @@ var AdvancedRenderer = function(canvas) {
     var width = canvas.width;
     var height = canvas.height;
 
+    var tempRenderTarget0 = this.tempRenderTarget0 = new zen3d.RenderTarget2D(width, height);
+    tempRenderTarget0.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
+    tempRenderTarget0.texture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
+    tempRenderTarget0.texture.generateMipmaps = false;
+
     this.tempRenderTarget = new zen3d.RenderTarget2D(width, height);
     this.tempRenderTarget.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
     this.tempRenderTarget.texture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
     this.tempRenderTarget.texture.generateMipmaps = false;
-    this.tempRenderTarget.texture.pixelType = zen3d.WEBGL_PIXEL_TYPE.FLOAT; // depth need float
+    if(useDepthTexture) {
+        this.tempRenderTarget.depthTexture = new zen3d.TextureDepth();
+        this.tempRenderTarget.depthTexture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
+        this.tempRenderTarget.depthTexture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
+    }
 
     this.tempRenderTarget2 = new zen3d.RenderTarget2D(width, height);
     this.tempRenderTarget2.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
@@ -34,6 +45,9 @@ var AdvancedRenderer = function(canvas) {
         zen3d.ShaderLib.normaldepth_frag,
         {}
     );
+
+    this.depthMaterial = new zen3d.DepthMaterial();
+    this.depthMaterial.packToRGBA = true;
 
     this.ssaoPass = new zen3d.SSAOPass();
     this.ssaoPass.setNoiseSize(256);
@@ -53,9 +67,10 @@ var AdvancedRenderer = function(canvas) {
     this.ssaoPass.uniforms["projectionInv"] = this.projectionInv.elements;
     this.ssaoPass.uniforms["viewInverseTranspose"] = this.viewInverseTranspose.elements;
 
-    this.ssaoPass.uniforms["normalDepthTex"] = this.tempRenderTarget.texture;
-    this.ssaoPass.uniforms["normalDepthTexSize"][0] = width;
-    this.ssaoPass.uniforms["normalDepthTexSize"][1] = height;
+    this.ssaoPass.uniforms["normalTex"] = this.tempRenderTarget.texture;
+    this.ssaoPass.uniforms["depthTex"] = useDepthTexture ? this.tempRenderTarget.depthTexture : this.tempRenderTarget0.texture;
+    this.ssaoPass.uniforms["texSize"][0] = width;
+    this.ssaoPass.uniforms["texSize"][1] = height;
 
     this.ssaoBlurPass = new zen3d.ShaderPostPass(zen3d.SSAOBlurShader);
     this.ssaoBlurPass.material.blending = zen3d.BLEND_TYPE.CUSTOM;
@@ -64,9 +79,13 @@ var AdvancedRenderer = function(canvas) {
     this.ssaoBlurPass.uniforms["projection"] = this.projection.elements;
     this.ssaoBlurPass.uniforms["viewInverseTranspose"] = this.viewInverseTranspose.elements;
 
-    this.ssaoBlurPass.uniforms["normalDepthTex"] = this.tempRenderTarget.texture;
+    this.ssaoBlurPass.uniforms["normalTex"] = this.tempRenderTarget.texture;
+    this.ssaoBlurPass.uniforms["depthTex"] = useDepthTexture ? this.tempRenderTarget.depthTexture : this.tempRenderTarget0.texture;
     this.ssaoBlurPass.uniforms["textureSize"][0] = width;
     this.ssaoBlurPass.uniforms["textureSize"][1] = height;
+
+    this.ssaoPass.material.defines["DEPTH_PACKING"] = useDepthTexture ? 0 : 1;
+	this.ssaoBlurPass.material.defines["DEPTH_PACKING"] = useDepthTexture ? 0 : 1;
 
     this.ssaoBlurPass.uniforms["blurSize"] = 2;
     this.ssaoBlurPass.uniforms["depthRange"] = 0.2;
@@ -102,6 +121,57 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
     var ssaoBlurPass = this.ssaoBlurPass;
     var colorAdjustPass = this.colorAdjustPass;
     var fxaaPass = this.fxaaPass;
+
+    if(!this.useDepthTexture) {
+        glCore.texture.setRenderTarget(this.tempRenderTarget0);
+
+        glCore.state.clearColor(1, 1, 1, 1);
+        glCore.clear(true, true, true);
+
+        var depthMaterial = this.depthMaterial;
+        depthMaterial.defines = {};
+        var renderList = scene.updateRenderList(camera);
+
+        glCore.renderPass(renderList.opaque, camera, {
+            scene: scene,
+            getMaterial: function(renderable) {
+                var material = depthMaterial;
+
+                // for alpha cut in ssao
+                // ignore if alpha < 0.99
+                if(renderable.material.diffuseMap) { 
+                    material.defines["USE_DIFFUSE_MAP"] = "";
+                    material.defines["ALPHATEST"] = 0.999;
+                    material.diffuseMap = renderable.material.diffuseMap;
+                } else {
+                    material.defines["USE_DIFFUSE_MAP"] = false;
+                    material.defines["ALPHATEST"] = false;
+                    material.diffuseMap = null;
+                }
+
+                return material;
+            }
+        });
+
+        glCore.renderPass(renderList.transparent, camera, {
+            scene: scene,
+            getMaterial: function(renderable) {
+                var material = depthMaterial;
+
+                if(renderable.material.diffuseMap) {
+                    material.defines["USE_DIFFUSE_MAP"] = "";
+                    material.defines["ALPHATEST"] = 0.999;
+                    material.diffuseMap = renderable.material.diffuseMap;
+                } else {
+                    material.defines["USE_DIFFUSE_MAP"] = false;
+                    material.defines["ALPHATEST"] = false;
+                    material.diffuseMap = null;
+                }
+
+                return material;
+            }
+        });
+    }
 
     // glCore.texture.setRenderTarget(backRenderTarget);
     glCore.texture.setRenderTarget(this.tempRenderTarget);
@@ -228,8 +298,8 @@ AdvancedRenderer.prototype.resize = function(width, height) {
     this.tempRenderTarget2.resize(width, height);
     this.tempRenderTarget3.resize(width, height);
 
-    this.ssaoPass.uniforms["normalDepthTexSize"][0] = width;
-    this.ssaoPass.uniforms["normalDepthTexSize"][1] = height;
+    this.ssaoPass.uniforms["texSize"][0] = width;
+    this.ssaoPass.uniforms["texSize"][1] = height;
 
     this.ssaoBlurPass.uniforms["textureSize"][0] = width;
     this.ssaoBlurPass.uniforms["textureSize"][1] = height;

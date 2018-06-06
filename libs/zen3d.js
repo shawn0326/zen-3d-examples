@@ -337,11 +337,18 @@
      * WEBGL_PIXEL_TYPE
      */
     var WEBGL_PIXEL_TYPE = {
+        BYTE: 0x1400,
         UNSIGNED_BYTE: 0x1401,
+        SHORT: 0x1402,
+        UNSIGNED_SHORT: 0x1403,
+        INT: 0x1404,
+        UNSIGNED_INT: 0x1405,
+        FLOAT: 0x1406,
+        HALF_FLOAT: 0x140B,
+        UNSIGNED_INT_24_8: 0x84FA,
         UNSIGNED_SHORT_4_4_4_4:	0x8033,
         UNSIGNED_SHORT_5_5_5_1: 0x8034,
-        UNSIGNED_SHORT_5_6_5: 0x8363,
-        FLOAT: 0x1406
+        UNSIGNED_SHORT_5_6_5: 0x8363
     }
 
     zen3d.WEBGL_PIXEL_TYPE = WEBGL_PIXEL_TYPE;
@@ -720,727 +727,6 @@
     zen3d.Euler = Euler;
 })();
 
-(function() {
-    /**
-     * a 3x3 matrix class
-     * @class
-     */
-    var Matrix3 = function() {
-        this.elements = new Float32Array([
-            1, 0, 0,
-            0, 1, 0,
-            0, 0, 1
-        ]);
-    }
-
-    /**
-     * identity matrix
-     **/
-    Matrix3.prototype.identity = function() {
-        this.set(
-            1, 0, 0,
-            0, 1, 0,
-            0, 0, 1
-        );
-
-        return this;
-    }
-
-    Matrix3.prototype.inverse = function() {
-        return this.getInverse(this);
-    }
-
-    Matrix3.prototype.getInverse = function ( matrix ) {
-
-		var me = matrix.elements,
-			te = this.elements,
-
-			n11 = me[ 0 ], n21 = me[ 1 ], n31 = me[ 2 ],
-			n12 = me[ 3 ], n22 = me[ 4 ], n32 = me[ 5 ],
-			n13 = me[ 6 ], n23 = me[ 7 ], n33 = me[ 8 ],
-
-			t11 = n33 * n22 - n32 * n23,
-			t12 = n32 * n13 - n33 * n12,
-			t13 = n23 * n12 - n22 * n13,
-
-			det = n11 * t11 + n21 * t12 + n31 * t13;
-
-		if ( det === 0 ) {
-
-			var msg = "zen3d.Matrix3: .getInverse() can't invert matrix, determinant is 0";
-			console.warn( msg );
-			return this.identity();
-
-		}
-
-		var detInv = 1 / det;
-
-		te[ 0 ] = t11 * detInv;
-		te[ 1 ] = ( n31 * n23 - n33 * n21 ) * detInv;
-		te[ 2 ] = ( n32 * n21 - n31 * n22 ) * detInv;
-
-		te[ 3 ] = t12 * detInv;
-		te[ 4 ] = ( n33 * n11 - n31 * n13 ) * detInv;
-		te[ 5 ] = ( n31 * n12 - n32 * n11 ) * detInv;
-
-		te[ 6 ] = t13 * detInv;
-		te[ 7 ] = ( n21 * n13 - n23 * n11 ) * detInv;
-		te[ 8 ] = ( n22 * n11 - n21 * n12 ) * detInv;
-
-		return this;
-
-	}
-
-    Matrix3.prototype.transpose = function () {
-
-		var tmp, m = this.elements;
-
-		tmp = m[ 1 ]; m[ 1 ] = m[ 3 ]; m[ 3 ] = tmp;
-		tmp = m[ 2 ]; m[ 2 ] = m[ 6 ]; m[ 6 ] = tmp;
-		tmp = m[ 5 ]; m[ 5 ] = m[ 7 ]; m[ 7 ] = tmp;
-
-		return this;
-
-	}
-
-    /**
-     * set the value of matrix
-     **/
-    Matrix3.prototype.set = function(n11, n12, n13,
-        n21, n22, n23,
-        n31, n32, n33) {
-
-        var ele = this.elements;
-        ele[0] = n11;
-        ele[3] = n12;
-        ele[6] = n13;
-
-        ele[1] = n21;
-        ele[4] = n22;
-        ele[7] = n23;
-
-        ele[2] = n31;
-        ele[5] = n32;
-        ele[8] = n33;
-
-        return this;
-    }
-
-    /**
-     * copy matrix
-     **/
-    Matrix3.prototype.copy = function(m) {
-        this.elements.set(m.elements);
-
-        return this;
-    }
-
-    /**
-     * multiply matrix
-     **/
-    Matrix3.prototype.multiply = function(m) {
-
-        return this.multiplyMatrices(this, m);
-
-    }
-
-    Matrix3.prototype.premultiply = function(m) {
-
-        return this.multiplyMatrices(m, this);
-
-    }
-
-    Matrix3.prototype.multiplyMatrices = function(a, b) {
-
-        var ae = a.elements;
-        var be = b.elements;
-        var te = this.elements;
-
-        var a11 = ae[0],
-            a12 = ae[3],
-            a13 = ae[6];
-        var a21 = ae[1],
-            a22 = ae[4],
-            a23 = ae[7];
-        var a31 = ae[2],
-            a32 = ae[5],
-            a33 = ae[8];
-
-        var b11 = be[0],
-            b12 = be[3],
-            b13 = be[6];
-        var b21 = be[1],
-            b22 = be[4],
-            b23 = be[7];
-        var b31 = be[2],
-            b32 = be[5],
-            b33 = be[8];
-
-        te[0] = a11 * b11 + a12 * b21 + a13 * b31;
-        te[3] = a11 * b12 + a12 * b22 + a13 * b32;
-        te[6] = a11 * b13 + a12 * b23 + a13 * b33;
-
-        te[1] = a21 * b11 + a22 * b21 + a23 * b31;
-        te[4] = a21 * b12 + a22 * b22 + a23 * b32;
-        te[7] = a21 * b13 + a22 * b23 + a23 * b33;
-
-        te[2] = a31 * b11 + a32 * b21 + a33 * b31;
-        te[5] = a31 * b12 + a32 * b22 + a33 * b32;
-        te[8] = a31 * b13 + a32 * b23 + a33 * b33;
-
-        return this;
-
-    }
-
-    // transform 2d
-    Matrix3.prototype.transform = function(x, y, scaleX, scaleY, rotation, anchorX, anchorY) {
-        var te = this.elements;
-
-        var cr = 1;
-        var sr = 0;
-        if (rotation % 360) {
-            var r = rotation;
-            cr = Math.cos(r);
-            sr = Math.sin(r);
-        }
-
-        te[0] = cr * scaleX;
-        te[3] = -sr * scaleY;
-        te[6] = x;
-
-        te[1] = sr * scaleX;
-        te[4] = cr * scaleY;
-        te[7] = y;
-
-        te[2] = 0;
-        te[5] = 0;
-        te[8] = 1;
-
-        if (anchorX || anchorY) {
-            // prepend the anchor offset:
-            te[6] -= anchorX * te[0] + anchorY * te[3];
-            te[7] -= anchorX * te[1] + anchorY * te[4];
-        }
-
-        return this;
-    }
-
-    Matrix3.prototype.setFromMatrix4 = function ( m ) {
-
-		var me = m.elements;
-
-		this.set(
-
-			me[ 0 ], me[ 4 ], me[ 8 ],
-			me[ 1 ], me[ 5 ], me[ 9 ],
-			me[ 2 ], me[ 6 ], me[ 10 ]
-
-		);
-
-		return this;
-
-	}
-
-    zen3d.Matrix3 = Matrix3;
-})();
-(function() {
-    /**
-     * a 4x4 matrix class
-     * @class
-     */
-    var Matrix4 = function() {
-        this.elements = new Float32Array([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        ]);
-    }
-
-    /**
-     * identity matrix
-     **/
-    Matrix4.prototype.identity = function() {
-        this.set(
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
-        );
-
-        return this;
-    }
-
-    /**
-     * set the value of matrix
-     **/
-    Matrix4.prototype.set = function(n11, n12, n13, n14,
-        n21, n22, n23, n24,
-        n31, n32, n33, n34,
-        n41, n42, n43, n44) {
-
-        var ele = this.elements;
-        ele[0] = n11;
-        ele[4] = n12;
-        ele[8] = n13;
-        ele[12] = n14;
-        ele[1] = n21;
-        ele[5] = n22;
-        ele[9] = n23;
-        ele[13] = n24;
-        ele[2] = n31;
-        ele[6] = n32;
-        ele[10] = n33;
-        ele[14] = n34;
-        ele[3] = n41;
-        ele[7] = n42;
-        ele[11] = n43;
-        ele[15] = n44;
-
-        return this;
-    }
-
-    /**
-     * copy matrix
-     **/
-    Matrix4.prototype.copy = function(m) {
-        this.elements.set(m.elements);
-
-        return this;
-    }
-
-    Matrix4.prototype.makeTranslation = function(x, y, z) {
-        this.set(
-            1, 0, 0, x,
-            0, 1, 0, y,
-            0, 0, 1, z,
-            0, 0, 0, 1
-        );
-
-        return this;
-    }
-
-    /**
-     * multiply matrix
-     **/
-    Matrix4.prototype.multiply = function(m) {
-
-        return this.multiplyMatrices(this, m);
-
-    }
-
-    Matrix4.prototype.premultiply = function(m) {
-
-        return this.multiplyMatrices(m, this);
-
-    }
-
-    Matrix4.prototype.multiplyMatrices = function(a, b) {
-
-        var ae = a.elements;
-        var be = b.elements;
-        var te = this.elements;
-
-        var a11 = ae[0],
-            a12 = ae[4],
-            a13 = ae[8],
-            a14 = ae[12];
-        var a21 = ae[1],
-            a22 = ae[5],
-            a23 = ae[9],
-            a24 = ae[13];
-        var a31 = ae[2],
-            a32 = ae[6],
-            a33 = ae[10],
-            a34 = ae[14];
-        var a41 = ae[3],
-            a42 = ae[7],
-            a43 = ae[11],
-            a44 = ae[15];
-
-        var b11 = be[0],
-            b12 = be[4],
-            b13 = be[8],
-            b14 = be[12];
-        var b21 = be[1],
-            b22 = be[5],
-            b23 = be[9],
-            b24 = be[13];
-        var b31 = be[2],
-            b32 = be[6],
-            b33 = be[10],
-            b34 = be[14];
-        var b41 = be[3],
-            b42 = be[7],
-            b43 = be[11],
-            b44 = be[15];
-
-        te[0] = a11 * b11 + a12 * b21 + a13 * b31 + a14 * b41;
-        te[4] = a11 * b12 + a12 * b22 + a13 * b32 + a14 * b42;
-        te[8] = a11 * b13 + a12 * b23 + a13 * b33 + a14 * b43;
-        te[12] = a11 * b14 + a12 * b24 + a13 * b34 + a14 * b44;
-
-        te[1] = a21 * b11 + a22 * b21 + a23 * b31 + a24 * b41;
-        te[5] = a21 * b12 + a22 * b22 + a23 * b32 + a24 * b42;
-        te[9] = a21 * b13 + a22 * b23 + a23 * b33 + a24 * b43;
-        te[13] = a21 * b14 + a22 * b24 + a23 * b34 + a24 * b44;
-
-        te[2] = a31 * b11 + a32 * b21 + a33 * b31 + a34 * b41;
-        te[6] = a31 * b12 + a32 * b22 + a33 * b32 + a34 * b42;
-        te[10] = a31 * b13 + a32 * b23 + a33 * b33 + a34 * b43;
-        te[14] = a31 * b14 + a32 * b24 + a33 * b34 + a34 * b44;
-
-        te[3] = a41 * b11 + a42 * b21 + a43 * b31 + a44 * b41;
-        te[7] = a41 * b12 + a42 * b22 + a43 * b32 + a44 * b42;
-        te[11] = a41 * b13 + a42 * b23 + a43 * b33 + a44 * b43;
-        te[15] = a41 * b14 + a42 * b24 + a43 * b34 + a44 * b44;
-
-        return this;
-
-    }
-
-    /**
-     * transpose matrix
-     **/
-    Matrix4.prototype.transpose = function() {
-
-        var te = this.elements;
-        var tmp;
-
-        tmp = te[1];
-        te[1] = te[4];
-        te[4] = tmp;
-        tmp = te[2];
-        te[2] = te[8];
-        te[8] = tmp;
-        tmp = te[6];
-        te[6] = te[9];
-        te[9] = tmp;
-
-        tmp = te[3];
-        te[3] = te[12];
-        te[12] = tmp;
-        tmp = te[7];
-        te[7] = te[13];
-        te[13] = tmp;
-        tmp = te[11];
-        te[11] = te[14];
-        te[14] = tmp;
-
-        return this;
-    }
-
-    Matrix4.prototype.inverse = function() {
-        return this.getInverse(this);
-    }
-
-    Matrix4.prototype.getInverse = function(m) {
-
-        // based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm
-        var te = this.elements,
-            me = m.elements,
-
-            n11 = me[0],
-            n21 = me[1],
-            n31 = me[2],
-            n41 = me[3],
-            n12 = me[4],
-            n22 = me[5],
-            n32 = me[6],
-            n42 = me[7],
-            n13 = me[8],
-            n23 = me[9],
-            n33 = me[10],
-            n43 = me[11],
-            n14 = me[12],
-            n24 = me[13],
-            n34 = me[14],
-            n44 = me[15],
-
-            t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44,
-            t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44,
-            t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44,
-            t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
-
-        var det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
-
-        if (det === 0) {
-
-            console.warn("can't invert matrix, determinant is 0");
-
-            return this.identity();
-
-        }
-
-        var detInv = 1 / det;
-
-        te[0] = t11 * detInv;
-        te[1] = (n24 * n33 * n41 - n23 * n34 * n41 - n24 * n31 * n43 + n21 * n34 * n43 + n23 * n31 * n44 - n21 * n33 * n44) * detInv;
-        te[2] = (n22 * n34 * n41 - n24 * n32 * n41 + n24 * n31 * n42 - n21 * n34 * n42 - n22 * n31 * n44 + n21 * n32 * n44) * detInv;
-        te[3] = (n23 * n32 * n41 - n22 * n33 * n41 - n23 * n31 * n42 + n21 * n33 * n42 + n22 * n31 * n43 - n21 * n32 * n43) * detInv;
-
-        te[4] = t12 * detInv;
-        te[5] = (n13 * n34 * n41 - n14 * n33 * n41 + n14 * n31 * n43 - n11 * n34 * n43 - n13 * n31 * n44 + n11 * n33 * n44) * detInv;
-        te[6] = (n14 * n32 * n41 - n12 * n34 * n41 - n14 * n31 * n42 + n11 * n34 * n42 + n12 * n31 * n44 - n11 * n32 * n44) * detInv;
-        te[7] = (n12 * n33 * n41 - n13 * n32 * n41 + n13 * n31 * n42 - n11 * n33 * n42 - n12 * n31 * n43 + n11 * n32 * n43) * detInv;
-
-        te[8] = t13 * detInv;
-        te[9] = (n14 * n23 * n41 - n13 * n24 * n41 - n14 * n21 * n43 + n11 * n24 * n43 + n13 * n21 * n44 - n11 * n23 * n44) * detInv;
-        te[10] = (n12 * n24 * n41 - n14 * n22 * n41 + n14 * n21 * n42 - n11 * n24 * n42 - n12 * n21 * n44 + n11 * n22 * n44) * detInv;
-        te[11] = (n13 * n22 * n41 - n12 * n23 * n41 - n13 * n21 * n42 + n11 * n23 * n42 + n12 * n21 * n43 - n11 * n22 * n43) * detInv;
-
-        te[12] = t14 * detInv;
-        te[13] = (n13 * n24 * n31 - n14 * n23 * n31 + n14 * n21 * n33 - n11 * n24 * n33 - n13 * n21 * n34 + n11 * n23 * n34) * detInv;
-        te[14] = (n14 * n22 * n31 - n12 * n24 * n31 - n14 * n21 * n32 + n11 * n24 * n32 + n12 * n21 * n34 - n11 * n22 * n34) * detInv;
-        te[15] = (n12 * n23 * n31 - n13 * n22 * n31 + n13 * n21 * n32 - n11 * n23 * n32 - n12 * n21 * n33 + n11 * n22 * n33) * detInv;
-
-        return this;
-
-    }
-
-    /**
-     * make transform from pos&scale&rotation(Quaternion)
-     **/
-    Matrix4.prototype.transform = function(pos, scale, rot) {
-
-        var rotMatrix = rot.toMatrix4(zen3d.helpMatrix);
-
-        var rele = rotMatrix.elements;
-        var ele = this.elements;
-
-        ele[0] = rele[0] * scale.x;
-        ele[1] = rele[1] * scale.y;
-        ele[2] = rele[2] * scale.z;
-        ele[3] = 0;
-
-        ele[4] = rele[4] * scale.x;
-        ele[5] = rele[5] * scale.y;
-        ele[6] = rele[6] * scale.z;
-        ele[7] = 0;
-
-        ele[8] = rele[8] * scale.x;
-        ele[9] = rele[9] * scale.y;
-        ele[10] = rele[10] * scale.z;
-        ele[11] = 0;
-
-        ele[12] = pos.x;
-        ele[13] = pos.y;
-        ele[14] = pos.z;
-        ele[15] = 1;
-
-        return this;
-    }
-
-    Matrix4.prototype.makeRotationFromQuaternion = function(q) {
-
-        var te = this.elements;
-
-        var x = q.x,
-            y = q.y,
-            z = q.z,
-            w = q.w;
-        var x2 = x + x,
-            y2 = y + y,
-            z2 = z + z;
-        var xx = x * x2,
-            xy = x * y2,
-            xz = x * z2;
-        var yy = y * y2,
-            yz = y * z2,
-            zz = z * z2;
-        var wx = w * x2,
-            wy = w * y2,
-            wz = w * z2;
-
-        te[0] = 1 - (yy + zz);
-        te[4] = xy - wz;
-        te[8] = xz + wy;
-
-        te[1] = xy + wz;
-        te[5] = 1 - (xx + zz);
-        te[9] = yz - wx;
-
-        te[2] = xz - wy;
-        te[6] = yz + wx;
-        te[10] = 1 - (xx + yy);
-
-        // last column
-        te[3] = 0;
-        te[7] = 0;
-        te[11] = 0;
-
-        // bottom row
-        te[12] = 0;
-        te[13] = 0;
-        te[14] = 0;
-        te[15] = 1;
-
-        return this;
-
-    }
-
-    var vector, matrix;
-    Matrix4.prototype.decompose = function(position, quaternion, scale) {
-        if (vector === undefined) {
-            vector = new zen3d.Vector3();
-            matrix = new Matrix4();
-        }
-
-        var te = this.elements;
-
-        var sx = vector.set(te[0], te[1], te[2]).getLength();
-        var sy = vector.set(te[4], te[5], te[6]).getLength();
-        var sz = vector.set(te[8], te[9], te[10]).getLength();
-
-        // if determine is negative, we need to invert one scale
-        var det = this.determinant();
-        if (det < 0) {
-            sx = -sx;
-        }
-
-        position.x = te[12];
-        position.y = te[13];
-        position.z = te[14];
-
-        // scale the rotation part
-
-        matrix.elements.set(this.elements); // at this point matrix is incomplete so we can't use .copy()
-
-        var invSX = 1 / sx;
-        var invSY = 1 / sy;
-        var invSZ = 1 / sz;
-
-        matrix.elements[0] *= invSX;
-        matrix.elements[1] *= invSX;
-        matrix.elements[2] *= invSX;
-
-        matrix.elements[4] *= invSY;
-        matrix.elements[5] *= invSY;
-        matrix.elements[6] *= invSY;
-
-        matrix.elements[8] *= invSZ;
-        matrix.elements[9] *= invSZ;
-        matrix.elements[10] *= invSZ;
-
-        quaternion.setFromRotationMatrix(matrix);
-
-        scale.x = sx;
-        scale.y = sy;
-        scale.z = sz;
-
-        return this;
-    }
-
-    Matrix4.prototype.determinant = function() {
-
-        var te = this.elements;
-
-        var n11 = te[0],
-            n12 = te[4],
-            n13 = te[8],
-            n14 = te[12];
-        var n21 = te[1],
-            n22 = te[5],
-            n23 = te[9],
-            n24 = te[13];
-        var n31 = te[2],
-            n32 = te[6],
-            n33 = te[10],
-            n34 = te[14];
-        var n41 = te[3],
-            n42 = te[7],
-            n43 = te[11],
-            n44 = te[15];
-
-        //TODO: make this more efficient
-        //( based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm )
-
-        return (
-            n41 * (+n14 * n23 * n32 -
-                n13 * n24 * n32 -
-                n14 * n22 * n33 +
-                n12 * n24 * n33 +
-                n13 * n22 * n34 -
-                n12 * n23 * n34
-            ) +
-            n42 * (+n11 * n23 * n34 -
-                n11 * n24 * n33 +
-                n14 * n21 * n33 -
-                n13 * n21 * n34 +
-                n13 * n24 * n31 -
-                n14 * n23 * n31
-            ) +
-            n43 * (+n11 * n24 * n32 -
-                n11 * n22 * n34 -
-                n14 * n21 * n32 +
-                n12 * n21 * n34 +
-                n14 * n22 * n31 -
-                n12 * n24 * n31
-            ) +
-            n44 * (-n13 * n22 * n31 -
-                n11 * n23 * n32 +
-                n11 * n22 * n33 +
-                n13 * n21 * n32 -
-                n12 * n21 * n33 +
-                n12 * n23 * n31
-            )
-
-        );
-
-    }
-
-    Matrix4.prototype.fromArray = function(array, offset) {
-        if (offset === undefined) offset = 0;
-
-        for (var i = 0; i < 16; i++) {
-            this.elements[i] = array[i + offset];
-        }
-
-        return this;
-    }
-
-    Matrix4.prototype.getMaxScaleOnAxis = function() {
-        var te = this.elements;
-
-        var scaleXSq = te[0] * te[0] + te[1] * te[1] + te[2] * te[2];
-        var scaleYSq = te[4] * te[4] + te[5] * te[5] + te[6] * te[6];
-        var scaleZSq = te[8] * te[8] + te[9] * te[9] + te[10] * te[10];
-
-        return Math.sqrt(Math.max(scaleXSq, scaleYSq, scaleZSq));
-    }
-
-    Matrix4.prototype.toArray = function(array, offset) {
-        if (array === undefined) array = [];
-        if (offset === undefined) offset = 0;
-
-        var te = this.elements;
-
-        array[offset] = te[0];
-        array[offset + 1] = te[1];
-        array[offset + 2] = te[2];
-        array[offset + 3] = te[3];
-
-        array[offset + 4] = te[4];
-        array[offset + 5] = te[5];
-        array[offset + 6] = te[6];
-        array[offset + 7] = te[7];
-
-        array[offset + 8] = te[8];
-        array[offset + 9] = te[9];
-        array[offset + 10] = te[10];
-        array[offset + 11] = te[11];
-
-        array[offset + 12] = te[12];
-        array[offset + 13] = te[13];
-        array[offset + 14] = te[14];
-        array[offset + 15] = te[15];
-
-        return array;
-    }
-
-    zen3d.Matrix4 = Matrix4;
-    zen3d.helpMatrix = new Matrix4();
-})();
 (function() {
     /**
      * a vector 2 class
@@ -2076,6 +1362,779 @@
 })();
 (function() {
     /**
+     * a 3x3 matrix class
+     * @class
+     */
+    var Matrix3 = function() {
+        this.elements = new Float32Array([
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ]);
+    }
+
+    /**
+     * identity matrix
+     **/
+    Matrix3.prototype.identity = function() {
+        this.set(
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        );
+
+        return this;
+    }
+
+    Matrix3.prototype.inverse = function() {
+        return this.getInverse(this);
+    }
+
+    Matrix3.prototype.getInverse = function ( matrix ) {
+
+		var me = matrix.elements,
+			te = this.elements,
+
+			n11 = me[ 0 ], n21 = me[ 1 ], n31 = me[ 2 ],
+			n12 = me[ 3 ], n22 = me[ 4 ], n32 = me[ 5 ],
+			n13 = me[ 6 ], n23 = me[ 7 ], n33 = me[ 8 ],
+
+			t11 = n33 * n22 - n32 * n23,
+			t12 = n32 * n13 - n33 * n12,
+			t13 = n23 * n12 - n22 * n13,
+
+			det = n11 * t11 + n21 * t12 + n31 * t13;
+
+		if ( det === 0 ) {
+
+			var msg = "zen3d.Matrix3: .getInverse() can't invert matrix, determinant is 0";
+			console.warn( msg );
+			return this.identity();
+
+		}
+
+		var detInv = 1 / det;
+
+		te[ 0 ] = t11 * detInv;
+		te[ 1 ] = ( n31 * n23 - n33 * n21 ) * detInv;
+		te[ 2 ] = ( n32 * n21 - n31 * n22 ) * detInv;
+
+		te[ 3 ] = t12 * detInv;
+		te[ 4 ] = ( n33 * n11 - n31 * n13 ) * detInv;
+		te[ 5 ] = ( n31 * n12 - n32 * n11 ) * detInv;
+
+		te[ 6 ] = t13 * detInv;
+		te[ 7 ] = ( n21 * n13 - n23 * n11 ) * detInv;
+		te[ 8 ] = ( n22 * n11 - n21 * n12 ) * detInv;
+
+		return this;
+
+	}
+
+    Matrix3.prototype.transpose = function () {
+
+		var tmp, m = this.elements;
+
+		tmp = m[ 1 ]; m[ 1 ] = m[ 3 ]; m[ 3 ] = tmp;
+		tmp = m[ 2 ]; m[ 2 ] = m[ 6 ]; m[ 6 ] = tmp;
+		tmp = m[ 5 ]; m[ 5 ] = m[ 7 ]; m[ 7 ] = tmp;
+
+		return this;
+
+	}
+
+    /**
+     * set the value of matrix
+     **/
+    Matrix3.prototype.set = function(n11, n12, n13,
+        n21, n22, n23,
+        n31, n32, n33) {
+
+        var ele = this.elements;
+        ele[0] = n11;
+        ele[3] = n12;
+        ele[6] = n13;
+
+        ele[1] = n21;
+        ele[4] = n22;
+        ele[7] = n23;
+
+        ele[2] = n31;
+        ele[5] = n32;
+        ele[8] = n33;
+
+        return this;
+    }
+
+    /**
+     * copy matrix
+     **/
+    Matrix3.prototype.copy = function(m) {
+        this.elements.set(m.elements);
+
+        return this;
+    }
+
+    /**
+     * multiply matrix
+     **/
+    Matrix3.prototype.multiply = function(m) {
+
+        return this.multiplyMatrices(this, m);
+
+    }
+
+    Matrix3.prototype.premultiply = function(m) {
+
+        return this.multiplyMatrices(m, this);
+
+    }
+
+    Matrix3.prototype.multiplyMatrices = function(a, b) {
+
+        var ae = a.elements;
+        var be = b.elements;
+        var te = this.elements;
+
+        var a11 = ae[0],
+            a12 = ae[3],
+            a13 = ae[6];
+        var a21 = ae[1],
+            a22 = ae[4],
+            a23 = ae[7];
+        var a31 = ae[2],
+            a32 = ae[5],
+            a33 = ae[8];
+
+        var b11 = be[0],
+            b12 = be[3],
+            b13 = be[6];
+        var b21 = be[1],
+            b22 = be[4],
+            b23 = be[7];
+        var b31 = be[2],
+            b32 = be[5],
+            b33 = be[8];
+
+        te[0] = a11 * b11 + a12 * b21 + a13 * b31;
+        te[3] = a11 * b12 + a12 * b22 + a13 * b32;
+        te[6] = a11 * b13 + a12 * b23 + a13 * b33;
+
+        te[1] = a21 * b11 + a22 * b21 + a23 * b31;
+        te[4] = a21 * b12 + a22 * b22 + a23 * b32;
+        te[7] = a21 * b13 + a22 * b23 + a23 * b33;
+
+        te[2] = a31 * b11 + a32 * b21 + a33 * b31;
+        te[5] = a31 * b12 + a32 * b22 + a33 * b32;
+        te[8] = a31 * b13 + a32 * b23 + a33 * b33;
+
+        return this;
+
+    }
+
+    // transform 2d
+    Matrix3.prototype.transform = function(x, y, scaleX, scaleY, rotation, anchorX, anchorY) {
+        var te = this.elements;
+
+        var cr = 1;
+        var sr = 0;
+        if (rotation % 360) {
+            var r = rotation;
+            cr = Math.cos(r);
+            sr = Math.sin(r);
+        }
+
+        te[0] = cr * scaleX;
+        te[3] = -sr * scaleY;
+        te[6] = x;
+
+        te[1] = sr * scaleX;
+        te[4] = cr * scaleY;
+        te[7] = y;
+
+        te[2] = 0;
+        te[5] = 0;
+        te[8] = 1;
+
+        if (anchorX || anchorY) {
+            // prepend the anchor offset:
+            te[6] -= anchorX * te[0] + anchorY * te[3];
+            te[7] -= anchorX * te[1] + anchorY * te[4];
+        }
+
+        return this;
+    }
+
+    Matrix3.prototype.setFromMatrix4 = function ( m ) {
+
+		var me = m.elements;
+
+		this.set(
+
+			me[ 0 ], me[ 4 ], me[ 8 ],
+			me[ 1 ], me[ 5 ], me[ 9 ],
+			me[ 2 ], me[ 6 ], me[ 10 ]
+
+		);
+
+		return this;
+
+	}
+
+    zen3d.Matrix3 = Matrix3;
+})();
+(function() {
+    /**
+     * a 4x4 matrix class
+     * @class
+     */
+    var Matrix4 = function() {
+        this.elements = new Float32Array([
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        ]);
+    }
+
+    /**
+     * identity matrix
+     **/
+    Matrix4.prototype.identity = function() {
+        this.set(
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1
+        );
+
+        return this;
+    }
+
+    /**
+     * set the value of matrix
+     **/
+    Matrix4.prototype.set = function(n11, n12, n13, n14,
+        n21, n22, n23, n24,
+        n31, n32, n33, n34,
+        n41, n42, n43, n44) {
+
+        var ele = this.elements;
+        ele[0] = n11;
+        ele[4] = n12;
+        ele[8] = n13;
+        ele[12] = n14;
+        ele[1] = n21;
+        ele[5] = n22;
+        ele[9] = n23;
+        ele[13] = n24;
+        ele[2] = n31;
+        ele[6] = n32;
+        ele[10] = n33;
+        ele[14] = n34;
+        ele[3] = n41;
+        ele[7] = n42;
+        ele[11] = n43;
+        ele[15] = n44;
+
+        return this;
+    }
+
+    /**
+     * copy matrix
+     **/
+    Matrix4.prototype.copy = function(m) {
+        this.elements.set(m.elements);
+
+        return this;
+    }
+
+    Matrix4.prototype.makeTranslation = function(x, y, z) {
+        this.set(
+            1, 0, 0, x,
+            0, 1, 0, y,
+            0, 0, 1, z,
+            0, 0, 0, 1
+        );
+
+        return this;
+    }
+
+    /**
+     * multiply matrix
+     **/
+    Matrix4.prototype.multiply = function(m) {
+
+        return this.multiplyMatrices(this, m);
+
+    }
+
+    Matrix4.prototype.premultiply = function(m) {
+
+        return this.multiplyMatrices(m, this);
+
+    }
+
+    Matrix4.prototype.multiplyMatrices = function(a, b) {
+
+        var ae = a.elements;
+        var be = b.elements;
+        var te = this.elements;
+
+        var a11 = ae[0],
+            a12 = ae[4],
+            a13 = ae[8],
+            a14 = ae[12];
+        var a21 = ae[1],
+            a22 = ae[5],
+            a23 = ae[9],
+            a24 = ae[13];
+        var a31 = ae[2],
+            a32 = ae[6],
+            a33 = ae[10],
+            a34 = ae[14];
+        var a41 = ae[3],
+            a42 = ae[7],
+            a43 = ae[11],
+            a44 = ae[15];
+
+        var b11 = be[0],
+            b12 = be[4],
+            b13 = be[8],
+            b14 = be[12];
+        var b21 = be[1],
+            b22 = be[5],
+            b23 = be[9],
+            b24 = be[13];
+        var b31 = be[2],
+            b32 = be[6],
+            b33 = be[10],
+            b34 = be[14];
+        var b41 = be[3],
+            b42 = be[7],
+            b43 = be[11],
+            b44 = be[15];
+
+        te[0] = a11 * b11 + a12 * b21 + a13 * b31 + a14 * b41;
+        te[4] = a11 * b12 + a12 * b22 + a13 * b32 + a14 * b42;
+        te[8] = a11 * b13 + a12 * b23 + a13 * b33 + a14 * b43;
+        te[12] = a11 * b14 + a12 * b24 + a13 * b34 + a14 * b44;
+
+        te[1] = a21 * b11 + a22 * b21 + a23 * b31 + a24 * b41;
+        te[5] = a21 * b12 + a22 * b22 + a23 * b32 + a24 * b42;
+        te[9] = a21 * b13 + a22 * b23 + a23 * b33 + a24 * b43;
+        te[13] = a21 * b14 + a22 * b24 + a23 * b34 + a24 * b44;
+
+        te[2] = a31 * b11 + a32 * b21 + a33 * b31 + a34 * b41;
+        te[6] = a31 * b12 + a32 * b22 + a33 * b32 + a34 * b42;
+        te[10] = a31 * b13 + a32 * b23 + a33 * b33 + a34 * b43;
+        te[14] = a31 * b14 + a32 * b24 + a33 * b34 + a34 * b44;
+
+        te[3] = a41 * b11 + a42 * b21 + a43 * b31 + a44 * b41;
+        te[7] = a41 * b12 + a42 * b22 + a43 * b32 + a44 * b42;
+        te[11] = a41 * b13 + a42 * b23 + a43 * b33 + a44 * b43;
+        te[15] = a41 * b14 + a42 * b24 + a43 * b34 + a44 * b44;
+
+        return this;
+
+    }
+
+    /**
+     * transpose matrix
+     **/
+    Matrix4.prototype.transpose = function() {
+
+        var te = this.elements;
+        var tmp;
+
+        tmp = te[1];
+        te[1] = te[4];
+        te[4] = tmp;
+        tmp = te[2];
+        te[2] = te[8];
+        te[8] = tmp;
+        tmp = te[6];
+        te[6] = te[9];
+        te[9] = tmp;
+
+        tmp = te[3];
+        te[3] = te[12];
+        te[12] = tmp;
+        tmp = te[7];
+        te[7] = te[13];
+        te[13] = tmp;
+        tmp = te[11];
+        te[11] = te[14];
+        te[14] = tmp;
+
+        return this;
+    }
+
+    Matrix4.prototype.inverse = function() {
+        return this.getInverse(this);
+    }
+
+    Matrix4.prototype.getInverse = function(m) {
+
+        // based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm
+        var te = this.elements,
+            me = m.elements,
+
+            n11 = me[0],
+            n21 = me[1],
+            n31 = me[2],
+            n41 = me[3],
+            n12 = me[4],
+            n22 = me[5],
+            n32 = me[6],
+            n42 = me[7],
+            n13 = me[8],
+            n23 = me[9],
+            n33 = me[10],
+            n43 = me[11],
+            n14 = me[12],
+            n24 = me[13],
+            n34 = me[14],
+            n44 = me[15],
+
+            t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44,
+            t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44,
+            t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44,
+            t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
+
+        var det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
+
+        if (det === 0) {
+
+            console.warn("can't invert matrix, determinant is 0");
+
+            return this.identity();
+
+        }
+
+        var detInv = 1 / det;
+
+        te[0] = t11 * detInv;
+        te[1] = (n24 * n33 * n41 - n23 * n34 * n41 - n24 * n31 * n43 + n21 * n34 * n43 + n23 * n31 * n44 - n21 * n33 * n44) * detInv;
+        te[2] = (n22 * n34 * n41 - n24 * n32 * n41 + n24 * n31 * n42 - n21 * n34 * n42 - n22 * n31 * n44 + n21 * n32 * n44) * detInv;
+        te[3] = (n23 * n32 * n41 - n22 * n33 * n41 - n23 * n31 * n42 + n21 * n33 * n42 + n22 * n31 * n43 - n21 * n32 * n43) * detInv;
+
+        te[4] = t12 * detInv;
+        te[5] = (n13 * n34 * n41 - n14 * n33 * n41 + n14 * n31 * n43 - n11 * n34 * n43 - n13 * n31 * n44 + n11 * n33 * n44) * detInv;
+        te[6] = (n14 * n32 * n41 - n12 * n34 * n41 - n14 * n31 * n42 + n11 * n34 * n42 + n12 * n31 * n44 - n11 * n32 * n44) * detInv;
+        te[7] = (n12 * n33 * n41 - n13 * n32 * n41 + n13 * n31 * n42 - n11 * n33 * n42 - n12 * n31 * n43 + n11 * n32 * n43) * detInv;
+
+        te[8] = t13 * detInv;
+        te[9] = (n14 * n23 * n41 - n13 * n24 * n41 - n14 * n21 * n43 + n11 * n24 * n43 + n13 * n21 * n44 - n11 * n23 * n44) * detInv;
+        te[10] = (n12 * n24 * n41 - n14 * n22 * n41 + n14 * n21 * n42 - n11 * n24 * n42 - n12 * n21 * n44 + n11 * n22 * n44) * detInv;
+        te[11] = (n13 * n22 * n41 - n12 * n23 * n41 - n13 * n21 * n42 + n11 * n23 * n42 + n12 * n21 * n43 - n11 * n22 * n43) * detInv;
+
+        te[12] = t14 * detInv;
+        te[13] = (n13 * n24 * n31 - n14 * n23 * n31 + n14 * n21 * n33 - n11 * n24 * n33 - n13 * n21 * n34 + n11 * n23 * n34) * detInv;
+        te[14] = (n14 * n22 * n31 - n12 * n24 * n31 - n14 * n21 * n32 + n11 * n24 * n32 + n12 * n21 * n34 - n11 * n22 * n34) * detInv;
+        te[15] = (n12 * n23 * n31 - n13 * n22 * n31 + n13 * n21 * n32 - n11 * n23 * n32 - n12 * n21 * n33 + n11 * n22 * n33) * detInv;
+
+        return this;
+
+    }
+
+    /**
+     * make transform from pos&scale&rotation(Quaternion)
+     **/
+    Matrix4.prototype.transform = function(pos, scale, rot) {
+
+        var rotMatrix = rot.toMatrix4(zen3d.helpMatrix);
+
+        var rele = rotMatrix.elements;
+        var ele = this.elements;
+
+        ele[0] = rele[0] * scale.x;
+        ele[1] = rele[1] * scale.x;
+        ele[2] = rele[2] * scale.x;
+        ele[3] = 0;
+
+        ele[4] = rele[4] * scale.y;
+        ele[5] = rele[5] * scale.y;
+        ele[6] = rele[6] * scale.y;
+        ele[7] = 0;
+
+        ele[8] = rele[8] * scale.z;
+        ele[9] = rele[9] * scale.z;
+        ele[10] = rele[10] * scale.z;
+        ele[11] = 0;
+
+        ele[12] = pos.x;
+        ele[13] = pos.y;
+        ele[14] = pos.z;
+        ele[15] = 1;
+
+        return this;
+    }
+
+    Matrix4.prototype.makeRotationFromQuaternion = function(q) {
+
+        var te = this.elements;
+
+        var x = q.x,
+            y = q.y,
+            z = q.z,
+            w = q.w;
+        var x2 = x + x,
+            y2 = y + y,
+            z2 = z + z;
+        var xx = x * x2,
+            xy = x * y2,
+            xz = x * z2;
+        var yy = y * y2,
+            yz = y * z2,
+            zz = z * z2;
+        var wx = w * x2,
+            wy = w * y2,
+            wz = w * z2;
+
+        te[0] = 1 - (yy + zz);
+        te[4] = xy - wz;
+        te[8] = xz + wy;
+
+        te[1] = xy + wz;
+        te[5] = 1 - (xx + zz);
+        te[9] = yz - wx;
+
+        te[2] = xz - wy;
+        te[6] = yz + wx;
+        te[10] = 1 - (xx + yy);
+
+        // last column
+        te[3] = 0;
+        te[7] = 0;
+        te[11] = 0;
+
+        // bottom row
+        te[12] = 0;
+        te[13] = 0;
+        te[14] = 0;
+        te[15] = 1;
+
+        return this;
+
+    }
+
+    Matrix4.prototype.lookAtRH = function() {
+        var x = new zen3d.Vector3();
+		var y = new zen3d.Vector3();
+        var z = new zen3d.Vector3();
+        
+        return function lookAtRH(eye, target, up) {
+            var te = this.elements;
+
+            z.subVectors( eye, target );
+
+            if(z.getLengthSquared() === 0) {
+
+                // eye and target are in the same position
+
+                z.z = 1;
+                
+            }
+
+            z.normalize();
+            x.crossVectors( up, z );
+            
+            if ( x.getLengthSquared() === 0 ) {
+
+				// up and z are parallel
+
+				if ( Math.abs( up.z ) === 1 ) {
+
+					z.x += 0.0001;
+
+				} else {
+
+					z.z += 0.0001;
+
+				}
+
+				z.normalize();
+				x.crossVectors( up, z );
+
+			}
+
+			x.normalize();
+			y.crossVectors( z, x );
+
+			te[ 0 ] = x.x; te[ 4 ] = y.x; te[ 8 ] = z.x;
+			te[ 1 ] = x.y; te[ 5 ] = y.y; te[ 9 ] = z.y;
+			te[ 2 ] = x.z; te[ 6 ] = y.z; te[ 10 ] = z.z;
+
+			return this;
+        }
+        
+    }()
+
+    var vector, matrix;
+    Matrix4.prototype.decompose = function(position, quaternion, scale) {
+        if (vector === undefined) {
+            vector = new zen3d.Vector3();
+            matrix = new Matrix4();
+        }
+
+        var te = this.elements;
+
+        var sx = vector.set(te[0], te[1], te[2]).getLength();
+        var sy = vector.set(te[4], te[5], te[6]).getLength();
+        var sz = vector.set(te[8], te[9], te[10]).getLength();
+
+        // if determine is negative, we need to invert one scale
+        var det = this.determinant();
+        if (det < 0) {
+            sx = -sx;
+        }
+
+        position.x = te[12];
+        position.y = te[13];
+        position.z = te[14];
+
+        // scale the rotation part
+
+        matrix.elements.set(this.elements); // at this point matrix is incomplete so we can't use .copy()
+
+        var invSX = 1 / sx;
+        var invSY = 1 / sy;
+        var invSZ = 1 / sz;
+
+        matrix.elements[0] *= invSX;
+        matrix.elements[1] *= invSX;
+        matrix.elements[2] *= invSX;
+
+        matrix.elements[4] *= invSY;
+        matrix.elements[5] *= invSY;
+        matrix.elements[6] *= invSY;
+
+        matrix.elements[8] *= invSZ;
+        matrix.elements[9] *= invSZ;
+        matrix.elements[10] *= invSZ;
+
+        quaternion.setFromRotationMatrix(matrix);
+
+        scale.x = sx;
+        scale.y = sy;
+        scale.z = sz;
+
+        return this;
+    }
+
+    Matrix4.prototype.determinant = function() {
+
+        var te = this.elements;
+
+        var n11 = te[0],
+            n12 = te[4],
+            n13 = te[8],
+            n14 = te[12];
+        var n21 = te[1],
+            n22 = te[5],
+            n23 = te[9],
+            n24 = te[13];
+        var n31 = te[2],
+            n32 = te[6],
+            n33 = te[10],
+            n34 = te[14];
+        var n41 = te[3],
+            n42 = te[7],
+            n43 = te[11],
+            n44 = te[15];
+
+        //TODO: make this more efficient
+        //( based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm )
+
+        return (
+            n41 * (+n14 * n23 * n32 -
+                n13 * n24 * n32 -
+                n14 * n22 * n33 +
+                n12 * n24 * n33 +
+                n13 * n22 * n34 -
+                n12 * n23 * n34
+            ) +
+            n42 * (+n11 * n23 * n34 -
+                n11 * n24 * n33 +
+                n14 * n21 * n33 -
+                n13 * n21 * n34 +
+                n13 * n24 * n31 -
+                n14 * n23 * n31
+            ) +
+            n43 * (+n11 * n24 * n32 -
+                n11 * n22 * n34 -
+                n14 * n21 * n32 +
+                n12 * n21 * n34 +
+                n14 * n22 * n31 -
+                n12 * n24 * n31
+            ) +
+            n44 * (-n13 * n22 * n31 -
+                n11 * n23 * n32 +
+                n11 * n22 * n33 +
+                n13 * n21 * n32 -
+                n12 * n21 * n33 +
+                n12 * n23 * n31
+            )
+
+        );
+
+    }
+
+    Matrix4.prototype.fromArray = function(array, offset) {
+        if (offset === undefined) offset = 0;
+
+        for (var i = 0; i < 16; i++) {
+            this.elements[i] = array[i + offset];
+        }
+
+        return this;
+    }
+
+    Matrix4.prototype.getMaxScaleOnAxis = function() {
+        var te = this.elements;
+
+        var scaleXSq = te[0] * te[0] + te[1] * te[1] + te[2] * te[2];
+        var scaleYSq = te[4] * te[4] + te[5] * te[5] + te[6] * te[6];
+        var scaleZSq = te[8] * te[8] + te[9] * te[9] + te[10] * te[10];
+
+        return Math.sqrt(Math.max(scaleXSq, scaleYSq, scaleZSq));
+    }
+
+    Matrix4.prototype.toArray = function(array, offset) {
+        if (array === undefined) array = [];
+        if (offset === undefined) offset = 0;
+
+        var te = this.elements;
+
+        array[offset] = te[0];
+        array[offset + 1] = te[1];
+        array[offset + 2] = te[2];
+        array[offset + 3] = te[3];
+
+        array[offset + 4] = te[4];
+        array[offset + 5] = te[5];
+        array[offset + 6] = te[6];
+        array[offset + 7] = te[7];
+
+        array[offset + 8] = te[8];
+        array[offset + 9] = te[9];
+        array[offset + 10] = te[10];
+        array[offset + 11] = te[11];
+
+        array[offset + 12] = te[12];
+        array[offset + 13] = te[13];
+        array[offset + 14] = te[14];
+        array[offset + 15] = te[15];
+
+        return array;
+    }
+
+    zen3d.Matrix4 = Matrix4;
+    zen3d.helpMatrix = new Matrix4();
+})();
+(function() {
+    /**
      * a Quaternion class
      * @class
      */
@@ -2488,6 +2547,12 @@
 
         return target;
     }
+
+    Quaternion.prototype.dot = function ( v ) {
+
+		return this._x * v._x + this._y * v._y + this._z * v._z + this._w * v._w;
+
+	}
 
     /**
      * set quaternion from axis angle
@@ -3028,6 +3093,19 @@
 		this.b = array[ offset + 2 ];
 
 		return this;
+    }
+    
+    Color3.prototype.toArray = function ( array, offset ) {
+
+		if ( array === undefined ) array = [];
+		if ( offset === undefined ) offset = 0;
+
+		array[ offset ] = this.r;
+		array[ offset + 1 ] = this.g;
+		array[ offset + 2 ] = this.b;
+
+		return array;
+
 	}
 
     zen3d.Color3 = Color3;
@@ -3638,6 +3716,8 @@
         var ext = getExtension(gl, "OES_standard_derivatives");
         // GL_OES_standard_derivatives
         var ext = getExtension(gl, "GL_OES_standard_derivatives");
+        // WEBGL_depth_texture
+        var ext = getExtension(gl, "WEBGL_depth_texture");
     }
 
     zen3d.WebGLCapabilities = WebGLCapabilities;
@@ -4286,21 +4366,52 @@
             state.bindTexture(gl.TEXTURE_2D, null);
 
             if (renderTarget.depthBuffer) {
-                renderTargetProperties.__webglDepthbuffer = gl.createRenderbuffer();
 
-                var renderbuffer = renderTargetProperties.__webglDepthbuffer;
+                // setup depth texture
+                if(renderTarget.depthTexture) {
+                    var depthTextureProperties = this.properties.get(renderTarget.depthTexture);
 
-                gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+                    depthTextureProperties.__webglTexture = gl.createTexture();
+                    state.bindTexture(gl.TEXTURE_2D, depthTextureProperties.__webglTexture);
+                    this.setTextureParameters(renderTarget.depthTexture, isTargetPowerOfTwo);
 
-                if (renderTarget.stencilBuffer) {
-                    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_STENCIL, renderTarget.width, renderTarget.height);
-                    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+                    pixelFormat = renderTarget.depthTexture.pixelFormat;
+                    pixelType = renderTarget.depthTexture.pixelType;
+                    gl.texImage2D(gl.TEXTURE_2D, 0, pixelFormat, renderTarget.width, renderTarget.height, 0, pixelFormat, pixelType, null);
+
+                    if ( pixelType === zen3d.WEBGL_PIXEL_TYPE.UNSIGNED_SHORT || pixelType === zen3d.WEBGL_PIXEL_TYPE.UNSIGNED_INT ) {
+
+                        gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTextureProperties.__webglTexture, 0 );
+            
+                    } else if ( pixelType === zen3d.WEBGL_PIXEL_TYPE.UNSIGNED_INT_24_8 ) {
+            
+                        gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, depthTextureProperties.__webglTexture, 0 );
+            
+                    } else {
+            
+                        throw new Error( 'Unknown depthTexture format' );
+            
+                    }
+
+                    state.bindTexture(gl.TEXTURE_2D, null);
                 } else {
-                    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, renderTarget.width, renderTarget.height);
-                    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
-                }
+                    renderTargetProperties.__webglDepthbuffer = gl.createRenderbuffer();
 
-                gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                    var renderbuffer = renderTargetProperties.__webglDepthbuffer;
+
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+
+                    if (renderTarget.stencilBuffer) {
+                        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_STENCIL, renderTarget.width, renderTarget.height);
+                        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+                    } else {
+                        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, renderTarget.width, renderTarget.height);
+                        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+                    }
+
+                    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                }
+                
             }
 
             var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
@@ -5756,7 +5867,7 @@ emissiveMap_frag: "#ifdef USE_EMISSIVEMAP\n\tvec4 emissiveColor = texture2D(emis
 emissiveMap_pars_frag: "#ifdef USE_EMISSIVEMAP\n\tuniform sampler2D emissiveMap;\n#endif",
 encodings_frag: "gl_FragColor = linearToOutputTexel( gl_FragColor );",
 encodings_pars_frag: "\nvec4 LinearToLinear( in vec4 value ) {\n\treturn value;\n}\nvec4 GammaToLinear( in vec4 value, in float gammaFactor ) {\n\treturn vec4( pow( value.xyz, vec3( gammaFactor ) ), value.w );\n}\nvec4 LinearToGamma( in vec4 value, in float gammaFactor ) {\n\treturn vec4( pow( value.xyz, vec3( 1.0 / gammaFactor ) ), value.w );\n}\nvec4 sRGBToLinear( in vec4 value ) {\n\treturn vec4( mix( pow( value.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), value.rgb * 0.0773993808, vec3( lessThanEqual( value.rgb, vec3( 0.04045 ) ) ) ), value.w );\n}\nvec4 LinearTosRGB( in vec4 value ) {\n\treturn vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.w );\n}\nvec4 RGBEToLinear( in vec4 value ) {\n\treturn vec4( value.rgb * exp2( value.a * 255.0 - 128.0 ), 1.0 );\n}\nvec4 LinearToRGBE( in vec4 value ) {\n\tfloat maxComponent = max( max( value.r, value.g ), value.b );\n\tfloat fExp = clamp( ceil( log2( maxComponent ) ), -128.0, 127.0 );\n\treturn vec4( value.rgb / exp2( fExp ), ( fExp + 128.0 ) / 255.0 );\n}\nvec4 RGBMToLinear( in vec4 value, in float maxRange ) {\n\treturn vec4( value.xyz * value.w * maxRange, 1.0 );\n}\nvec4 LinearToRGBM( in vec4 value, in float maxRange ) {\n\tfloat maxRGB = max( value.x, max( value.g, value.b ) );\n\tfloat M      = clamp( maxRGB / maxRange, 0.0, 1.0 );\n\tM            = ceil( M * 255.0 ) / 255.0;\n\treturn vec4( value.rgb / ( M * maxRange ), M );\n}\nvec4 RGBDToLinear( in vec4 value, in float maxRange ) {\n\treturn vec4( value.rgb * ( ( maxRange / 255.0 ) / value.a ), 1.0 );\n}\nvec4 LinearToRGBD( in vec4 value, in float maxRange ) {\n\tfloat maxRGB = max( value.x, max( value.g, value.b ) );\n\tfloat D      = max( maxRange / maxRGB, 1.0 );\n\tD            = min( floor( D ) / 255.0, 1.0 );\n\treturn vec4( value.rgb * ( D * ( 255.0 / maxRange ) ), D );\n}\nconst mat3 cLogLuvM = mat3( 0.2209, 0.3390, 0.4184, 0.1138, 0.6780, 0.7319, 0.0102, 0.1130, 0.2969 );\nvec4 LinearToLogLuv( in vec4 value )  {\n\tvec3 Xp_Y_XYZp = value.rgb * cLogLuvM;\n\tXp_Y_XYZp = max(Xp_Y_XYZp, vec3(1e-6, 1e-6, 1e-6));\n\tvec4 vResult;\n\tvResult.xy = Xp_Y_XYZp.xy / Xp_Y_XYZp.z;\n\tfloat Le = 2.0 * log2(Xp_Y_XYZp.y) + 127.0;\n\tvResult.w = fract(Le);\n\tvResult.z = (Le - (floor(vResult.w*255.0))/255.0)/255.0;\n\treturn vResult;\n}\nconst mat3 cLogLuvInverseM = mat3( 6.0014, -2.7008, -1.7996, -1.3320, 3.1029, -5.7721, 0.3008, -1.0882, 5.6268 );\nvec4 LogLuvToLinear( in vec4 value ) {\n\tfloat Le = value.z * 255.0 + value.w;\n\tvec3 Xp_Y_XYZp;\n\tXp_Y_XYZp.y = exp2((Le - 127.0) / 2.0);\n\tXp_Y_XYZp.z = Xp_Y_XYZp.y / value.y;\n\tXp_Y_XYZp.x = value.x * Xp_Y_XYZp.z;\n\tvec3 vRGB = Xp_Y_XYZp.rgb * cLogLuvInverseM;\n\treturn vec4( max(vRGB, 0.0), 1.0 );\n}\n",
-end_frag: "if(outColor.a <= 0.0) {\n    discard;\n}\ngl_FragColor = outColor;",
+end_frag: "gl_FragColor = outColor;",
 envMap_frag: "#ifdef USE_ENV_MAP\n    vec3 envDir;\n    #if defined(USE_NORMAL_MAP) || defined(USE_BUMPMAP)\n        envDir = reflect(normalize(v_worldPos - u_CameraPosition), N);\n    #else\n        envDir = v_EnvPos;\n    #endif\n    vec4 envColor = textureCube(envMap, envDir);\n    envColor = envMapTexelToLinear( envColor );\n    #ifdef ENVMAP_BLENDING_MULTIPLY\n\t\toutColor = mix(outColor, envColor * outColor, u_EnvMap_Intensity);\n\t#elif defined( ENVMAP_BLENDING_MIX )\n\t\toutColor = mix(outColor, envColor, u_EnvMap_Intensity);\n\t#elif defined( ENVMAP_BLENDING_ADD )\n\t\toutColor += envColor * u_EnvMap_Intensity;\n\t#endif\n#endif",
 envMap_pars_frag: "#ifdef USE_ENV_MAP\n    #if defined(USE_NORMAL_MAP) || defined(USE_BUMPMAP)\n        varying vec3 v_worldPos;\n    #else\n        varying vec3 v_EnvPos;\n    #endif\n    uniform samplerCube envMap;\n    uniform float u_EnvMap_Intensity;\n#endif",
 envMap_pars_vert: "#ifdef USE_ENV_MAP\n    #if defined(USE_NORMAL_MAP) || defined(USE_BUMPMAP)\n        varying vec3 v_worldPos;\n    #else\n        varying vec3 v_EnvPos;\n    #endif\n#endif",
@@ -5803,8 +5914,8 @@ canvas2d_frag: "#include <common_frag>\nvarying vec2 v_Uv;\nuniform sampler2D sp
 canvas2d_vert: "#include <common_vert>\nattribute vec2 a_Uv;\nvarying vec2 v_Uv;\nvoid main() {\n    #include <begin_vert>\n    #include <pvm_vert>\n    v_Uv = a_Uv;\n}",
 cube_frag: "#include <common_frag>\nuniform samplerCube cubeMap;\nvarying vec3 v_ModelPos;\nvoid main() {\n    #include <begin_frag>\n    outColor *= textureCube(cubeMap, v_ModelPos);\n    #include <end_frag>\n}",
 cube_vert: "#include <common_vert>\nvarying vec3 v_ModelPos;\nvoid main() {\n    #include <begin_vert>\n    #include <pvm_vert>\n    v_ModelPos = (u_Model * vec4(transformed, 1.0)).xyz;\n}",
-depth_frag: "#include <common_frag>\n#include <packing>\nvoid main() {\n    #ifdef DEPTH_PACKING_RGBA\n        gl_FragColor = packDepthToRGBA(gl_FragCoord.z);\n    #else\n        gl_FragColor = vec4( vec3( 1.0 - gl_FragCoord.z ), u_Opacity );\n    #endif\n}",
-depth_vert: "#include <common_vert>\n#include <skinning_pars_vert>\nvoid main() {\n    #include <begin_vert>\n    #include <skinning_vert>\n    #include <pvm_vert>\n}",
+depth_frag: "#include <common_frag>\n#include <diffuseMap_pars_frag>\n#include <uv_pars_frag>\n#include <packing>\nvoid main() {\n    #if defined(USE_DIFFUSE_MAP) && defined(ALPHATEST)\n        vec4 texelColor = texture2D( texture, v_Uv );\n        float alpha = texelColor.a * u_Opacity;\n        if(alpha < ALPHATEST) discard;\n    #endif\n    \n    #ifdef DEPTH_PACKING_RGBA\n        gl_FragColor = packDepthToRGBA(gl_FragCoord.z);\n    #else\n        gl_FragColor = vec4( vec3( 1.0 - gl_FragCoord.z ), u_Opacity );\n    #endif\n}",
+depth_vert: "#include <common_vert>\n#include <skinning_pars_vert>\n#include <uv_pars_vert>\nvoid main() {\n    #include <uv_vert>\n    #include <begin_vert>\n    #include <skinning_vert>\n    #include <pvm_vert>\n}",
 distance_frag: "#include <common_frag>\nuniform float nearDistance;\nuniform float farDistance;\nvarying vec3 v_ModelPos;\n#include <packing>\nvoid main() {\n    float dist = length( v_ModelPos - u_CameraPosition );\n\tdist = ( dist - nearDistance ) / ( farDistance - nearDistance );\n\tdist = saturate( dist );\n    gl_FragColor = packDepthToRGBA(dist);\n}",
 distance_vert: "#include <common_vert>\nvarying vec3 v_ModelPos;\n#include <skinning_pars_vert>\nvoid main() {\n    #include <begin_vert>\n    #include <skinning_vert>\n    #include <pvm_vert>\n    v_ModelPos = (u_Model * vec4(transformed, 1.0)).xyz;\n}",
 lambert_frag: "#include <common_frag>\nuniform vec3 emissive;\n#include <uv_pars_frag>\n#include <color_pars_frag>\n#include <diffuseMap_pars_frag>\n#include <normalMap_pars_frag>\n#include <bumpMap_pars_frag>\n#include <light_pars_frag>\n#include <normal_pars_frag>\n#include <viewModelPos_pars_frag>\n#include <bsdfs>\n#include <envMap_pars_frag>\n#include <aoMap_pars_frag>\n#include <shadowMap_pars_frag>\n#include <fog_pars_frag>\n#include <emissiveMap_pars_frag>\n#include <clippingPlanes_pars_frag>\nvoid main() {\n    #include <clippingPlanes_frag>\n    #include <begin_frag>\n    #include <color_frag>\n    #include <diffuseMap_frag>\n    #include <alphaTest_frag>\n    #include <normal_frag>\n    #include <light_frag>\n    #include <envMap_frag>\n    #include <shadowMap_frag>\n    vec3 totalEmissiveRadiance = emissive;\n    #include <emissiveMap_frag>\n    outColor += vec4(totalEmissiveRadiance.rgb, 0.0);\n    #include <end_frag>\n    #include <encodings_frag>\n    #include <premultipliedAlpha_frag>\n    #include <fog_frag>\n}",
@@ -6017,14 +6128,12 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
             case MATERIAL_TYPE.BASIC:
                 vshader_define.push(props.useDiffuseMap ? '#define USE_DIFFUSE_MAP' : '');
                 vshader_define.push(props.useEnvMap ? '#define USE_ENV_MAP' : '');
-                vshader_define.push(props.useVertexColors ? '#define USE_VCOLOR' : '');
-
+                
                 vshader_define.push(props.sizeAttenuation ? '#define USE_SIZEATTENUATION' : '');
                 vshader_define.push(props.useAOMap ? '#define USE_AOMAP' : '');
 
                 fshader_define.push(props.useDiffuseMap ? '#define USE_DIFFUSE_MAP' : '');
                 fshader_define.push(props.useEnvMap ? '#define USE_ENV_MAP' : '');
-                fshader_define.push(props.useVertexColors ? '#define USE_VCOLOR' : '');
                 if(props.useEnvMap) {
                     var define = "";
                     switch (props.envMapCombine) {
@@ -6047,6 +6156,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
             case MATERIAL_TYPE.LINE_LOOP:
                 fshader_define.push(zen3d.ShaderChunk["encodings_pars_frag"]);
                 fshader_define.push('#define GAMMA_FACTOR ' + props.gammaFactor);
+                vshader_define.push(props.useVertexColors ? '#define USE_VCOLOR' : '');
 
                 fshader_define.push(getTexelDecodingFunction("mapTexelToLinear", props.diffuseMapEncoding));
                 fshader_define.push(getTexelDecodingFunction("envMapTexelToLinear", props.envMapEncoding));
@@ -6054,6 +6164,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
                 fshader_define.push(getTexelEncodingFunction("linearToOutputTexel", props.outputEncoding));
 
                 fshader_define.push(props.premultipliedAlpha ? '#define USE_PREMULTIPLIED_ALPHA' : '');
+
+                fshader_define.push(props.useVertexColors ? '#define USE_VCOLOR' : '');
             case MATERIAL_TYPE.DEPTH:
                 fshader_define.push(props.packDepthToRGBA ? '#define DEPTH_PACKING_RGBA' : '');
             case MATERIAL_TYPE.DISTANCE:
@@ -6125,7 +6237,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         var material = material || object.material;
 
         // get render context from cache
-        var lights = cache ? cache.lights : null;
+        var lights = (cache && material.acceptLight) ? cache.lights : null;
         var fog = cache ? cache.fog : null;
         var clippingPlanes = cache ? cache.clippingPlanes : null;
 
@@ -6260,7 +6372,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
 
         for(var i = 0; i < 6; i++) {
             this.lookTarget.set(this.targets[i].x + this.camera.position.x, this.targets[i].y + this.camera.position.y, this.targets[i].z + this.camera.position.z);
-            this.camera.setLookAt(this.lookTarget, this.ups[i]);
+            this.camera.lookAt(this.lookTarget, this.ups[i]);
 
             this.camera.updateMatrix();
 
@@ -6382,7 +6494,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         var camera = this.camera = new zen3d.Camera();
         camera.frustumCulled = false;
         camera.position.set(0, 1, 0);
-        camera.setLookAt(new zen3d.Vector3(0, 0, 0), new zen3d.Vector3(0, 0, -1));
+        camera.lookAt(new zen3d.Vector3(0, 0, 0), new zen3d.Vector3(0, 0, -1));
         camera.setOrtho(-1, 1, -1, 1, 0.1, 2);
         scene.add(camera);
 
@@ -6397,10 +6509,12 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         // static scene
         scene.updateMatrix();
         this.renderList = scene.updateRenderList(camera);
+
+        this.renderConfig = {};
     }
 
     ShaderPostPass.prototype.render = function(glCore) {
-        glCore.renderPass(this.renderList.opaque, this.camera);
+        glCore.renderPass(this.renderList.opaque, this.camera, this.renderConfig);
     }
 
     zen3d.ShaderPostPass = ShaderPostPass;
@@ -6968,6 +7082,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         RenderTarget2D.superClass.constructor.call(this, width, height);
 
         this.texture = new zen3d.Texture2D();
+
+        this.depthTexture = null;
     }
 
     zen3d.inherit(RenderTarget2D, zen3d.RenderTargetBase);
@@ -7869,6 +7985,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
             texture.pixelFormat = isJPEG ? zen3d.WEBGL_PIXEL_FORMAT.RGB : zen3d.WEBGL_PIXEL_FORMAT.RGBA;
             texture.image = image;
             texture.version++;
+
+            texture.dispatchEvent({type: 'onload'});
         });
 
         return texture;
@@ -7932,6 +8050,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         function loaded() {
             texture.pixelFormat = isJPEG ? zen3d.WEBGL_PIXEL_FORMAT.RGB : zen3d.WEBGL_PIXEL_FORMAT.RGBA;
             texture.version++;
+            texture.dispatchEvent({type: 'onload'});
         }
 
         return texture;
@@ -7959,6 +8078,31 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     TextureData.prototype.isDataTexture = true;
 
     zen3d.TextureData = TextureData;
+})();
+(function() {
+    var TextureDepth = function(width, height) {
+        TextureDepth.superClass.constructor.call(this);
+
+        this.image = {width: width, height: height};
+
+        // DEPTH_ATTACHMENT set to unsigned_short or unsigned_int
+        // DEPTH_STENCIL_ATTACHMENT set to UNSIGNED_INT_24_8
+        this.pixelType = zen3d.WEBGL_PIXEL_TYPE.UNSIGNED_SHORT;
+
+        // don't change
+        this.pixelFormat = zen3d.WEBGL_PIXEL_FORMAT.DEPTH_COMPONENT;   
+
+        this.magFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
+        this.minFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
+
+        this.generateMipmaps = false;
+    }
+
+    zen3d.inherit(TextureDepth, zen3d.Texture2D);
+
+    TextureDepth.prototype.isDepthTexture = true;
+
+    zen3d.TextureDepth = TextureDepth;
 })();
 (function() {
     var BLEND_EQUATION = zen3d.BLEND_EQUATION;
@@ -8612,29 +8756,20 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     }();
 
     /**
-     * set view by look at, this func will set quaternion of this camera
+     * set view by look at, this func will set quaternion of this object
      */
-    Object3D.prototype.setLookAt = function(target, up) {
-        var eye = this.position;
+    Object3D.prototype.lookAt = function() {
 
-        var zaxis = new zen3d.Vector3();
-        target.subtract(eye, zaxis); // right-hand coordinates system
-        zaxis.normalize();
+        var m = new zen3d.Matrix4();
 
-        var xaxis = new zen3d.Vector3();
-        xaxis.crossVectors(up, zaxis);
-        xaxis.normalize();
+        return function lookAt(target, up) {
 
-        var yaxis = new zen3d.Vector3();
-        yaxis.crossVectors(zaxis, xaxis);
+            m.lookAtRH(target, this.position, up);
+            this.quaternion.setFromRotationMatrix(m);
 
-        this.quaternion.setFromRotationMatrix(zen3d.helpMatrix.set(
-            xaxis.x, yaxis.x, zaxis.x, 0,
-            xaxis.y, yaxis.y, zaxis.y, 0,
-            xaxis.z, yaxis.z, zaxis.z, 0,
-            0, 0, 0, 1
-        ));
-    }
+        };
+
+    }();
 
     /**
      * raycast
@@ -9083,7 +9218,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         light.getWorldDirection(this._lookTarget);
         camera.position.setFromMatrixPosition(light.worldMatrix);
         lookTarget.set(lookTarget.x + camera.position.x, lookTarget.y + camera.position.y, lookTarget.z + camera.position.z);
-        camera.setLookAt(lookTarget, this._up);
+        camera.lookAt(lookTarget, this._up);
 
         // update view matrix
         camera.updateMatrix();
@@ -9168,7 +9303,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         light.getWorldDirection(this._lookTarget);
         camera.position.setFromMatrixPosition(light.worldMatrix);
         lookTarget.set(lookTarget.x + camera.position.x, lookTarget.y + camera.position.y, lookTarget.z + camera.position.z);
-        camera.setLookAt(lookTarget, this._up);
+        camera.lookAt(lookTarget, this._up);
 
         // update view matrix
         camera.updateMatrix();
@@ -9254,7 +9389,7 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         // set camera position and lookAt(rotation)
         camera.position.setFromMatrixPosition(light.worldMatrix);
         lookTarget.set(targets[face].x + camera.position.x, targets[face].y + camera.position.y, targets[face].z + camera.position.z);
-        camera.setLookAt(lookTarget, ups[face]);
+        camera.lookAt(lookTarget, ups[face]);
 
         // update view matrix
         camera.updateMatrix();
@@ -9320,27 +9455,16 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
     /**
      * set view by look at, this func will set quaternion of this camera
      */
-    Camera.prototype.setLookAt = function(target, up) {
-        var eye = this.position;
+    Camera.prototype.lookAt = function() {
+        var m = new zen3d.Matrix4();
 
-        var zaxis = new zen3d.Vector3();
-        eye.subtract(target, zaxis); // right-hand coordinates system
-        zaxis.normalize();
+        return function lookAt(target, up) {
 
-        var xaxis = new zen3d.Vector3();
-        xaxis.crossVectors(up, zaxis);
-        xaxis.normalize();
+            m.lookAtRH(this.position, target, up);
+            this.quaternion.setFromRotationMatrix(m);
 
-        var yaxis = new zen3d.Vector3();
-        yaxis.crossVectors(zaxis, xaxis);
-
-        this.quaternion.setFromRotationMatrix(zen3d.helpMatrix.set(
-            xaxis.x, yaxis.x, zaxis.x, 0,
-            xaxis.y, yaxis.y, zaxis.y, 0,
-            xaxis.z, yaxis.z, zaxis.z, 0,
-            0, 0, 0, 1
-        ));
-    }
+        };
+    }();
 
     /**
      * set orthographic projection matrix
@@ -13296,6 +13420,9 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
 
         this.bindTouch = undefined;
         this._lastTouchX, this._lastTouchY, this._fingerTwo = false, this._lastDistance;
+
+        this._lastPosition = new zen3d.Vector3();
+        this._lastQuaternion = new zen3d.Quaternion();
     }
 
     Object.defineProperties(HoverController.prototype, {
@@ -13319,6 +13446,8 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         }
     });
 
+    var EPS = 0.000001;
+
     HoverController.prototype.update = function() {
         this.bindMouse && this._updateMouse();
         this.bindTouch && this._updateTouch();
@@ -13330,7 +13459,17 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         var camera = this.camera;
         var target = this.lookAtPoint;
         camera.position.set(distanceX + target.x, distanceY + target.y, distanceZ + target.z);
-        camera.setLookAt(target, this.up);
+        camera.lookAt(target, this.up);
+
+        if(
+            this._lastPosition.distanceToSquared(camera.position) > EPS ||
+            8 * ( 1 - this._lastQuaternion.dot( camera.quaternion ) ) > EPS
+        ) {
+            this._lastPosition.copy(camera.position);
+            this._lastQuaternion.copy(camera.quaternion);
+            return true;
+        }
+        return false;
     }
 
     HoverController.prototype._updateMouse = function() {
@@ -13417,11 +13556,28 @@ sprite_vert: "uniform mat4 modelMatrix;\nuniform mat4 viewMatrix;\nuniform mat4 
         this.bindKeyboard = undefined;
         this.bindMouse = undefined;
         this._lastMouseX, this._lastMouseY, this._mouseDown = false;
+
+        this._lastPosition = new zen3d.Vector3();
+        this._lastQuaternion = new zen3d.Quaternion();
     }
+
+    var EPS = 0.000001;
 
     FreeController.prototype.update = function() {
         this.bindKeyboard && this.keyboardUpdate();
         this.bindMouse && this.mouseUpdate();
+
+        var camera = this.camera;
+
+        if(
+            this._lastPosition.distanceToSquared(camera.position) > EPS ||
+            8 * ( 1 - this._lastQuaternion.dot( camera.quaternion ) ) > EPS
+        ) {
+            this._lastPosition.copy(camera.position);
+            this._lastQuaternion.copy(camera.quaternion);
+            return true;
+        }
+        return false;
     }
 
     var forward = new zen3d.Vector3();

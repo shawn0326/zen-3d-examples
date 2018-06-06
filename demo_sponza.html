@@ -82,6 +82,10 @@
 						object.material.diffuseMap.anisotropy = renderer.glCore.capabilities.maxAnisotropy;
 					}
 
+					if(object.material) {
+						object.material.alphaTest = 0.9;
+					}
+
 					object.castShadow = true;
 					object.receiveShadow = true;
 				});
@@ -126,7 +130,7 @@
 			controller.bindKeyboard = keyboard;
 			controller.bindMouse = mouse;
 
-			camera.setLookAt(new zen3d.Vector3(0, 30, 0), new zen3d.Vector3(0, 1, 0));
+			camera.lookAt(new zen3d.Vector3(0, 30, 0), new zen3d.Vector3(0, 1, 0));
 
 			// gui
 			var gui = new dat.GUI();
@@ -201,7 +205,7 @@
 				directionalLight.position.x = 450 * Math.cos( phi );
 				directionalLight.position.y = 450 * Math.sin( phi ) * Math.sin( theta );
 				directionalLight.position.z = 450 * Math.sin( phi ) * Math.cos( theta );
-				directionalLight.setLookAt(new zen3d.Vector3(), new zen3d.Vector3(0, 1, 0));
+				directionalLight.lookAt(new zen3d.Vector3(), new zen3d.Vector3(0, 1, 0));
 
 				// scene.remove(sunSphere);
 				// effectController.sun && scene.add(sunSphere);
