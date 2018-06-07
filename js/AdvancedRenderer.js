@@ -19,6 +19,7 @@ var AdvancedRenderer = function(canvas) {
     tempRenderTarget0.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
     tempRenderTarget0.texture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
     tempRenderTarget0.texture.generateMipmaps = false;
+    // tempRenderTarget0.texture.pixelType = zen3d.WEBGL_PIXEL_TYPE.HALF_FLOAT;
 
     this.tempRenderTarget = new zen3d.RenderTarget2D(width, height);
     this.tempRenderTarget.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
@@ -54,7 +55,7 @@ var AdvancedRenderer = function(canvas) {
     this.ssaoPass.setKernelSize(32);
     // ssaoPass.material.defines["ALCHEMY"] = 1;
     var radius = 8;
-    this.ssaoPass.uniforms["intensity"] = 1;
+    this.ssaoPass.uniforms["intensity"] = 1.4;
     this.ssaoPass.uniforms["power"] = 1;
     this.ssaoPass.uniforms["bias"] = radius / 50;
     this.ssaoPass.uniforms["radius"] = radius;
@@ -92,29 +93,32 @@ var AdvancedRenderer = function(canvas) {
 
     this.shadowMapPass = new zen3d.ShadowMapPass();
 
+    this.fxaaPass = new zen3d.ShaderPostPass(zen3d.FXAAShader);
+    this.fxaaPass.uniforms["tDiffuse"] = this.tempRenderTarget2.texture;
+    this.fxaaPass.uniforms["resolution"] = [1 / width, 1 / height];
+
     this.colorAdjustPass = new zen3d.ShaderPostPass(zen3d.ColorAdjustShader);
-    this.colorAdjustPass.uniforms["tDiffuse"] = this.tempRenderTarget2.texture;
     this.colorAdjustPass.uniforms["brightness"] = 0;
     this.colorAdjustPass.uniforms["contrast"] = 1;
     this.colorAdjustPass.uniforms["exposure"] = 0.1;
     this.colorAdjustPass.uniforms["gamma"] = 0.5;
     this.colorAdjustPass.uniforms["saturation"] =  1.1;
 
-    this.fxaaPass = new zen3d.ShaderPostPass(zen3d.FXAAShader);
-    this.fxaaPass.uniforms["tDiffuse"] = this.tempRenderTarget3.texture;
-    this.fxaaPass.uniforms["resolution"] = [1 / width, 1 / height];
-
     this.beauty = true;
     this.ssao = true;
     
     this.shadowDirty = true;
+    this.sceneDirty = true;
+
+    this.antialiasType = 'TAA';
+
+    this.superSampling = new zen3d.SuperSampling(width, height);
 
 }
 
+var oldProjectionMatrix = new zen3d.Matrix4();
+
 AdvancedRenderer.prototype.render = function(scene, camera) {
-    // do render pass
-    scene.updateMatrix();
-    scene.updateLights();
 
     var glCore = this.glCore;
     var ssaoPass = this.ssaoPass;
@@ -122,173 +126,223 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
     var colorAdjustPass = this.colorAdjustPass;
     var fxaaPass = this.fxaaPass;
 
-    if(!this.useDepthTexture) {
-        glCore.texture.setRenderTarget(this.tempRenderTarget0);
+    var width = this.backRenderTarget.width;
+    var height = this.backRenderTarget.height;
 
-        glCore.state.clearColor(1, 1, 1, 1);
-        glCore.clear(true, true, true);
+    var count = 1;
+    var tex;
+    var updated = false;
 
-        var depthMaterial = this.depthMaterial;
-        depthMaterial.defines = {};
-        var renderList = scene.updateRenderList(camera);
+    for(var i = 0; i < count; i++) {
+        if(this.antialiasType !== 'TAA' || !this.superSampling.finished() || this.sceneDirty) {
 
-        glCore.renderPass(renderList.opaque, camera, {
-            scene: scene,
-            getMaterial: function(renderable) {
-                var material = depthMaterial;
-
-                // for alpha cut in ssao
-                // ignore if alpha < 0.99
-                if(renderable.material.diffuseMap) { 
-                    material.defines["USE_DIFFUSE_MAP"] = "";
-                    material.defines["ALPHATEST"] = 0.999;
-                    material.diffuseMap = renderable.material.diffuseMap;
-                } else {
-                    material.defines["USE_DIFFUSE_MAP"] = false;
-                    material.defines["ALPHATEST"] = false;
-                    material.diffuseMap = null;
-                }
-
-                return material;
-            }
-        });
-
-        glCore.renderPass(renderList.transparent, camera, {
-            scene: scene,
-            getMaterial: function(renderable) {
-                var material = depthMaterial;
-
-                if(renderable.material.diffuseMap) {
-                    material.defines["USE_DIFFUSE_MAP"] = "";
-                    material.defines["ALPHATEST"] = 0.999;
-                    material.diffuseMap = renderable.material.diffuseMap;
-                } else {
-                    material.defines["USE_DIFFUSE_MAP"] = false;
-                    material.defines["ALPHATEST"] = false;
-                    material.diffuseMap = null;
-                }
-
-                return material;
-            }
-        });
-    }
-
-    // glCore.texture.setRenderTarget(backRenderTarget);
-    glCore.texture.setRenderTarget(this.tempRenderTarget);
-
-    glCore.state.clearColor(0, 0, 0, 1);
-    glCore.clear(true, true, true);
-
-    // scene.overrideMaterial = this.normalDepthMaterial;
-    // glCore.render(scene, camera);
-
-    var normalDepthMaterial = this.normalDepthMaterial;
-    var renderList = scene.updateRenderList(camera);
-
-    glCore.renderPass(renderList.opaque, camera, {
-        scene: scene,
-        getMaterial: function(renderable) {
-            var material = normalDepthMaterial;
-
-            // for alpha cut in ssao
-            // ignore if alpha < 0.99
-            if(renderable.material.diffuseMap) { 
-                material.defines["USE_DIFFUSE_MAP"] = "";
-                material.defines["ALPHATEST"] = 0.999;
-                material.diffuseMap = renderable.material.diffuseMap;
-            } else {
-                material.defines["USE_DIFFUSE_MAP"] = false;
-                material.defines["ALPHATEST"] = false;
-                material.diffuseMap = null;
-            }
-
-            return material;
-        }
-    });
-
-    glCore.renderPass(renderList.transparent, camera, {
-        scene: scene,
-        getMaterial: function(renderable) {
-            var material = normalDepthMaterial;
-
-            if(renderable.material.diffuseMap) {
-                material.defines["USE_DIFFUSE_MAP"] = "";
-                material.defines["ALPHATEST"] = 0.999;
-                material.diffuseMap = renderable.material.diffuseMap;
-            } else {
-                material.defines["USE_DIFFUSE_MAP"] = false;
-                material.defines["ALPHATEST"] = false;
-                material.diffuseMap = null;
-            }
-
-            return material;
-        }
-    });
-
-    glCore.texture.setRenderTarget(this.tempRenderTarget2);
-
-    glCore.state.clearColor(1, 1, 1, 1);
-    glCore.clear(true, true, true);
-
-    this.projection.copy(camera.projectionMatrix);
-    this.projectionInv.copy(camera.projectionMatrix).inverse();
-    // this.viewInverseTranspose.copy(camera.viewMatrix).getInverse(viewInverseTranspose).transpose();
-    this.viewInverseTranspose.copy(camera.worldMatrix).transpose();
-
-    ssaoPass.render(glCore);
-
-    glCore.texture.setRenderTarget(this.tempRenderTarget3);
-
-    glCore.state.clearColor(0, 0, 0, 0);
-    glCore.clear(true, true, true);
-
-    ssaoBlurPass.uniforms["tDiffuse"] = this.tempRenderTarget2.texture;
-    ssaoBlurPass.uniforms["direction"] = 0;
-    ssaoBlurPass.render(glCore);
-
-    glCore.texture.setRenderTarget(this.tempRenderTarget2);
-
-    glCore.state.clearColor(0.5, 0.5, 0.5, 1);
-    glCore.clear(true, true, true);
+            if(this.sceneDirty) this.superSampling.start();
     
-    if(this.beauty) {
-        scene.overrideMaterial = null;
+            if(!updated) {
+                // do render pass
+                scene.updateMatrix();
+                scene.updateLights();
 
-        // shadow
-        if(this.shadowDirty) {
-            this.shadowMapPass.render(glCore, scene);
+                scene.updateRenderList(camera); // ignore jitter
+
+                updated = true;
+            }
+    
+            if(this.antialiasType === 'TAA') {
+                oldProjectionMatrix.copy(camera.projectionMatrix);
+                this.superSampling.jitterProjection(camera, width, height);
+            }
+    
+            if(!this.useDepthTexture) {
+                glCore.texture.setRenderTarget(this.tempRenderTarget0);
+    
+                glCore.state.clearColor(1, 1, 1, 1);
+                glCore.clear(true, true, true);
+    
+                var depthMaterial = this.depthMaterial;
+                depthMaterial.defines = {};
+                var renderList = scene.getRenderList(camera);
+    
+                glCore.renderPass(renderList.opaque, camera, {
+                    scene: scene,
+                    getMaterial: function(renderable) {
+                        var material = depthMaterial;
+    
+                        // for alpha cut in ssao
+                        // ignore if alpha < 0.99
+                        if(renderable.material.diffuseMap) { 
+                            material.defines["USE_DIFFUSE_MAP"] = "";
+                            material.defines["ALPHATEST"] = 0.999;
+                            material.diffuseMap = renderable.material.diffuseMap;
+                        } else {
+                            material.defines["USE_DIFFUSE_MAP"] = false;
+                            material.defines["ALPHATEST"] = false;
+                            material.diffuseMap = null;
+                        }
+    
+                        return material;
+                    }
+                });
+    
+                glCore.renderPass(renderList.transparent, camera, {
+                    scene: scene,
+                    getMaterial: function(renderable) {
+                        var material = depthMaterial;
+    
+                        if(renderable.material.diffuseMap) {
+                            material.defines["USE_DIFFUSE_MAP"] = "";
+                            material.defines["ALPHATEST"] = 0.999;
+                            material.diffuseMap = renderable.material.diffuseMap;
+                        } else {
+                            material.defines["USE_DIFFUSE_MAP"] = false;
+                            material.defines["ALPHATEST"] = false;
+                            material.diffuseMap = null;
+                        }
+    
+                        return material;
+                    }
+                });
+            }
+    
+            // glCore.texture.setRenderTarget(backRenderTarget);
+            glCore.texture.setRenderTarget(this.tempRenderTarget);
+    
+            glCore.state.clearColor(0, 0, 0, 1);
+            glCore.clear(true, true, true);
+    
+            // scene.overrideMaterial = this.normalDepthMaterial;
+            // glCore.render(scene, camera);
+    
+            var normalDepthMaterial = this.normalDepthMaterial;
+            var renderList = scene.getRenderList(camera);
+    
+            glCore.renderPass(renderList.opaque, camera, {
+                scene: scene,
+                getMaterial: function(renderable) {
+                    var material = normalDepthMaterial;
+    
+                    // for alpha cut in ssao
+                    // ignore if alpha < 0.99
+                    if(renderable.material.diffuseMap) { 
+                        material.defines["USE_DIFFUSE_MAP"] = "";
+                        material.defines["ALPHATEST"] = 0.999;
+                        material.diffuseMap = renderable.material.diffuseMap;
+                    } else {
+                        material.defines["USE_DIFFUSE_MAP"] = false;
+                        material.defines["ALPHATEST"] = false;
+                        material.diffuseMap = null;
+                    }
+    
+                    return material;
+                }
+            });
+    
+            glCore.renderPass(renderList.transparent, camera, {
+                scene: scene,
+                getMaterial: function(renderable) {
+                    var material = normalDepthMaterial;
+    
+                    if(renderable.material.diffuseMap) {
+                        material.defines["USE_DIFFUSE_MAP"] = "";
+                        material.defines["ALPHATEST"] = 0.999;
+                        material.diffuseMap = renderable.material.diffuseMap;
+                    } else {
+                        material.defines["USE_DIFFUSE_MAP"] = false;
+                        material.defines["ALPHATEST"] = false;
+                        material.diffuseMap = null;
+                    }
+    
+                    return material;
+                }
+            });
+    
             glCore.texture.setRenderTarget(this.tempRenderTarget2);
-            this.shadowDirty = false;
+    
+            glCore.state.clearColor(1, 1, 1, 1);
+            glCore.clear(true, true, true);
+    
+            this.projection.copy(camera.projectionMatrix);
+            this.projectionInv.copy(camera.projectionMatrix).inverse();
+            // this.viewInverseTranspose.copy(camera.viewMatrix).getInverse(viewInverseTranspose).transpose();
+            this.viewInverseTranspose.copy(camera.worldMatrix).transpose();
+    
+            ssaoPass.render(glCore);
+    
+            glCore.texture.setRenderTarget(this.tempRenderTarget3);
+    
+            glCore.state.clearColor(0, 0, 0, 0);
+            glCore.clear(true, true, true);
+    
+            ssaoBlurPass.uniforms["tDiffuse"] = this.tempRenderTarget2.texture;
+            ssaoBlurPass.uniforms["direction"] = 0;
+            ssaoBlurPass.render(glCore);
+    
+            glCore.texture.setRenderTarget(this.tempRenderTarget2);
+    
+            glCore.state.clearColor(0.5, 0.5, 0.5, 1);
+            glCore.clear(true, true, true);
+            
+            if(this.beauty) {
+                scene.overrideMaterial = null;
+    
+                // shadow
+                if(this.shadowDirty) {
+                    this.shadowMapPass.render(glCore, scene);
+                    glCore.texture.setRenderTarget(this.tempRenderTarget2);
+                    this.shadowDirty = false;
+                }
+    
+                glCore.render(scene, camera, false, false);
+    
+                ssaoBlurPass.material.transparent = true;
+            }
+    
+            if(this.ssao) {
+                ssaoBlurPass.uniforms["tDiffuse"] = this.tempRenderTarget3.texture;
+                ssaoBlurPass.uniforms["direction"] = 1;
+                ssaoBlurPass.render(glCore);
+            }
+    
+            if(this.beauty) {
+                ssaoBlurPass.material.transparent = false;
+            }
+    
+            if(this.antialiasType === 'TAA') {
+                camera.projectionMatrix.copy(oldProjectionMatrix);
+            }
         }
-
-        glCore.render(scene, camera);
-
-        ssaoBlurPass.material.transparent = true;
+    
+        if(this.antialiasType === 'FXAA') {
+            glCore.texture.setRenderTarget(this.tempRenderTarget3);
+    
+            glCore.state.clearColor(0, 0, 0, 0);
+            glCore.clear(true, true, true);
+    
+            fxaaPass.render(glCore);
+    
+            tex = this.tempRenderTarget3.tex;
+        } else {
+            if(this.sceneDirty) {
+                this.superSampling.start();
+                this.sceneDirty = false;
+            }
+    
+            if(!this.superSampling.finished()) {
+                tex = this.superSampling.sample(glCore, this.tempRenderTarget2.texture);
+            } else {
+                tex = this.superSampling.output();
+            }
+        }
     }
-
-    if(this.ssao) {
-        ssaoBlurPass.uniforms["tDiffuse"] = this.tempRenderTarget3.texture;
-        ssaoBlurPass.uniforms["direction"] = 1;
-        ssaoBlurPass.render(glCore);
-    }
-
-    if(this.beauty) {
-        ssaoBlurPass.material.transparent = false;
-    }
-
-    glCore.texture.setRenderTarget(this.tempRenderTarget3);
-
-    glCore.state.clearColor(0, 0, 0, 0);
-    glCore.clear(true, true, true);
-
-    colorAdjustPass.render(glCore);
 
     glCore.texture.setRenderTarget(this.backRenderTarget);
 
     glCore.state.clearColor(0, 0, 0, 0);
     glCore.clear(true, true, true);
 
-    fxaaPass.render(glCore);
+    colorAdjustPass.uniforms["tDiffuse"] = tex;
+    colorAdjustPass.render(glCore);
+
 }
 
 AdvancedRenderer.prototype.resize = function(width, height) {
@@ -305,4 +359,8 @@ AdvancedRenderer.prototype.resize = function(width, height) {
     this.ssaoBlurPass.uniforms["textureSize"][1] = height;
 
     this.fxaaPass.uniforms["resolution"] = [1 / width, 1 / height];
+
+    this.superSampling.resize(width, height);
+
+    this.sceneDirty = true;
 }

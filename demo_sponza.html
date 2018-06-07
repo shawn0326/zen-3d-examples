@@ -32,6 +32,9 @@
 	<script src="libs/shaders/ColorAdjustShader.js"></script>
 	<script src="libs/shaders/FXAAShader.js"></script>
 
+	<script src="libs/shaders/BlendShader.js"></script>
+	<script src="libs/SuperSampling.js"></script>
+
 	<script src="js/AdvancedRenderer.js"></script>
 
 	<script src="libs/shaders/SkyShader.js"></script>
@@ -83,7 +86,7 @@
 					}
 
 					if(object.material) {
-						object.material.alphaTest = 0.9;
+						object.material.alphaTest = 0.5;
 					}
 
 					object.castShadow = true;
@@ -96,6 +99,8 @@
 				scene.add(object);
 
 				renderer.shadowDirty = true;
+
+				renderer.sceneDirty = true;
 			});
 
 			var ambientLight = new zen3d.AmbientLight();
@@ -117,7 +122,7 @@
 
 			var camera = new zen3d.Camera();
 	        camera.position.set(80, 5, -10);
-			camera.setPerspective(45 / 180 * Math.PI, width / height, 0.1, 8000);
+			camera.setPerspective(45 / 180 * Math.PI, width / height, 1, 1000);
 			camera.add(sky);
 			scene.add(camera);
 			
@@ -152,17 +157,24 @@
 						renderer.ssao = true;
 						break;
 				}
+				renderer.sceneDirty = true;
 			});
 			ssaoFolder.add(params, "kernelSize", [16, 32, 64, 128, 256]).onChange(function(val) {
 				renderer.ssaoPass.setKernelSize(val);
+				renderer.sceneDirty = true;
 			});
-			ssaoFolder.add(renderer.ssaoPass.uniforms, "intensity").min(0).max(2).step(0.1);
-			ssaoFolder.add(renderer.ssaoPass.uniforms, "power").min(0).max(5).step(1);
-			ssaoFolder.add(renderer.ssaoPass.uniforms, "radius").min(0).max(10);
-			ssaoFolder.add(renderer.ssaoPass.uniforms, "bias").min(0).max(5);
 
-			ssaoFolder.add(renderer.ssaoBlurPass.uniforms, "blurSize").min(0).max(2);
-			ssaoFolder.add(renderer.ssaoBlurPass.uniforms, "depthRange").min(0).max(1);
+			function onSSAOChange() {
+				renderer.sceneDirty = true;
+			}
+
+			ssaoFolder.add(renderer.ssaoPass.uniforms, "intensity").min(0).max(3).step(0.1).onChange(onSSAOChange);
+			ssaoFolder.add(renderer.ssaoPass.uniforms, "power").min(0).max(5).step(1).onChange(onSSAOChange);
+			ssaoFolder.add(renderer.ssaoPass.uniforms, "radius").min(0).max(10).onChange(onSSAOChange);
+			ssaoFolder.add(renderer.ssaoPass.uniforms, "bias").min(0).max(5).onChange(onSSAOChange);
+
+			ssaoFolder.add(renderer.ssaoBlurPass.uniforms, "blurSize").min(0).max(2).onChange(onSSAOChange);
+			ssaoFolder.add(renderer.ssaoBlurPass.uniforms, "depthRange").min(0).max(1).onChange(onSSAOChange);
 
 			// color adjust
 			var colorFolder = gui.addFolder('color');
@@ -216,6 +228,8 @@
 
 				renderer.shadowDirty = true;
 
+				renderer.sceneDirty = true;
+
 				// renderer.render( scene, camera );
 
 			}
@@ -225,13 +239,18 @@
 			var skyFolder = gui.addFolder('sky');
 			skyFolder.add( effectController, "inclination", 0, 0.5, 0.0001 ).onChange( guiChanged );
 
+			var antialiasFolder = gui.addFolder('antialiasFolder');
+			antialiasFolder.add(renderer, 'antialiasType', ['FXAA', 'TAA']);
+
 	        function loop(count) {
 
 				requestAnimationFrame(loop);
 
-				controller.update();
+				var change = controller.update();
 				keyboard.update();
 				mouse.update();
+
+				renderer.sceneDirty = (renderer.sceneDirty || change);
 
 	            renderer.render(scene, camera);
 	        }
@@ -242,7 +261,7 @@
 				width = window.innerWidth || 2;
 		        height = window.innerHeight || 2;
 
-				camera.setPerspective(45 / 180 * Math.PI, width / height, 0.1, 8000);
+				camera.setPerspective(45 / 180 * Math.PI, width / height, 1, 1000);
 
 				renderer.resize(width * window.devicePixelRatio, height * window.devicePixelRatio);
 
