@@ -240,7 +240,7 @@
 			skyFolder.add( effectController, "inclination", 0, 0.5, 0.0001 ).onChange( guiChanged );
 
 			var antialiasFolder = gui.addFolder('antialiasFolder');
-			antialiasFolder.add(renderer, 'antialiasType', ['FXAA', 'TAA']);
+			antialiasFolder.add(renderer, 'antialiasType', ['FXAA', 'TAA', 'NONE']);
 
 	        function loop(count) {
 

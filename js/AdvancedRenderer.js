@@ -312,7 +312,9 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
             }
         }
     
-        if(this.antialiasType === 'FXAA') {
+        if (this.antialiasType === 'NONE') {
+            tex = this.tempRenderTarget2.texture;
+        } else if (this.antialiasType === 'FXAA') {
             glCore.texture.setRenderTarget(this.tempRenderTarget3);
     
             glCore.state.clearColor(0, 0, 0, 0);
@@ -320,7 +322,7 @@ AdvancedRenderer.prototype.render = function(scene, camera) {
     
             fxaaPass.render(glCore);
     
-            tex = this.tempRenderTarget3.tex;
+            tex = this.tempRenderTarget3.texture;
         } else {
             if(this.sceneDirty) {
                 this.superSampling.start();
