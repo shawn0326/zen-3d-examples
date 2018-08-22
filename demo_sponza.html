@@ -24,6 +24,7 @@
 	<script src="libs/dat.gui.min.js"></script>
 
 	<script src="libs/loaders/GLTFLoader.js"></script>
+	<script src="libs/controls/OrbitControls.js"></script>
 	<script src="libs/controls/FreeControls.js"></script>
 
 	<script src="libs/pass/SSAOPass.js"></script>
@@ -109,7 +110,7 @@
 			});
 
 			var ambientLight = new zen3d.AmbientLight();
-	        ambientLight.color.setHex(0x778899);
+	        ambientLight.color.setHex(0xffffff);
 			scene.add(ambientLight);
 
 			// top light
@@ -133,8 +134,13 @@
 			
 			window.camera = camera;
 
-			var controller = new zen3d.FreeControls(camera, canvas);
-			controller.movementSpeed = 0.25;
+			if (zen3d.isMobile) {
+				var controller = new zen3d.OrbitControls(camera, canvas);
+
+			} else {
+				var controller = new zen3d.FreeControls(camera, canvas);
+				controller.movementSpeed = 0.25;
+			}
 
 			camera.lookAt(new zen3d.Vector3(0, 30, 0), new zen3d.Vector3(0, 1, 0));
 
