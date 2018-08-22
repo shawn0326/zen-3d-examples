@@ -17,8 +17,8 @@ var AdvancedRenderer = function(canvas) {
     this.gBuffer.enableAlbedoMetalness = false;
 
     this.tempRenderTarget2 = new zen3d.RenderTarget2D(width, height);
-    this.tempRenderTarget2.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
-    this.tempRenderTarget2.texture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.NEAREST;
+    this.tempRenderTarget2.texture.minFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
+    this.tempRenderTarget2.texture.magFilter = zen3d.WEBGL_TEXTURE_FILTER.LINEAR;
     this.tempRenderTarget2.texture.generateMipmaps = false;
 
     this.tempRenderTarget3 = new zen3d.RenderTarget2D(width, height);
