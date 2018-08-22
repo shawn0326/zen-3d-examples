@@ -10,16 +10,17 @@
             console.error("zen3d.Sky required zen3d.SkyShader");
         }
 
-        var material = new zen3d.ShaderMaterial(zen3d.SkyShader.vertexShader, zen3d.SkyShader.fragmentShader, zen3d.cloneUniforms(zen3d.SkyShader.uniforms));
+        var material = new zen3d.ShaderMaterial(zen3d.SkyShader);
         material.side = zen3d.DRAW_SIDE.BACK;
         material.cubeMap = cubeTexture;
 
-        Sky.superClass.constructor.call(this, geometry, material);
+        zen3d.Mesh.call(this, geometry, material);
 
         this.frustumCulled = false;
     }
 
-    zen3d.inherit(Sky, zen3d.Mesh);
+    Sky.prototype = Object.create(zen3d.Mesh.prototype);
+    Sky.prototype.constructor = Sky;
 
     zen3d.Sky = Sky;
 })();

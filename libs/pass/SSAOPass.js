@@ -32,22 +32,6 @@
         return texture;
     }
 
-    // Generate halton sequence
-    // https://en.wikipedia.org/wiki/Halton_sequence
-    // halton数列，用来产生0-1的均匀分布的一组数据
-    // index 为采样位置，base为基数（任意质数）
-    function halton(index, base) {
-        var result = 0;
-        var f = 1 / base;
-        var i = index;
-        while (i > 0) {
-            result = result + f * (i % base);
-            i = Math.floor(i / base);
-            f = f / base;
-        }
-        return result;
-    }
-
     var halton = zen3d.halton;
 
     // 生成采样偏移数组
@@ -73,17 +57,27 @@
     }
 
     var SSAOPass = function() {
-        SSAOPass.superClass.constructor.call(this, zen3d.SSAOShader);
+        zen3d.ShaderPostPass.call(this, zen3d.SSAOShader);
+
+        this._kernels = {};
 
         this.setNoiseSize(4);
         this.setKernelSize(12); // 12
     }
 
-    zen3d.inherit(SSAOPass, zen3d.ShaderPostPass);
+    SSAOPass.prototype = Object.create(zen3d.ShaderPostPass.prototype);
+    SSAOPass.prototype.constructor = SSAOPass;
 
-    SSAOPass.prototype.setKernelSize = function(size) {
-       this.material.defines["KERNEL_SIZE"] = size;
-       this.material.uniforms["kernel[0]"] = generateKernel(size, undefined, true);
+    SSAOPass.prototype.setKernelSize = function(size, offset) {
+        offset = (offset !== undefined) ? offset : 0;
+
+        var code = size + "_" + offset;
+        if(!this._kernels[code]) {
+            this._kernels[code] = generateKernel(size, offset * size, true);
+        }
+
+        this.material.defines["KERNEL_SIZE"] = size;
+        this.material.uniforms["kernel[0]"] = this._kernels[code];
     }
 
     SSAOPass.prototype.setNoiseSize = function(size) {

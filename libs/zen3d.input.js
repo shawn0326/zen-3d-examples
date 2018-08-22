@@ -1,4 +1,8 @@
-(function() {
+(function (global, factory) {
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
+    typeof define === 'function' && define.amd ? define(factory) :
+    (factory());
+}(this, (function () { 'use strict';
 
     var _keyCodeToKeyIdentifier = {
         'TAB': 9,
@@ -57,7 +61,7 @@
      * @example
      * var keyboard = new Keyboard(window); // attach keyboard listeners to the window
      */
-    var Keyboard = function(element, options) {
+    function Keyboard(element, options) {
         options = options || {};
         this._element = null;
 
@@ -117,7 +121,7 @@
         if (this.stopPropagation) {
             event.stopPropagation();
         }
-    }
+    };
 
     Keyboard.prototype._handleKeyUp = function(event) {
         var code = event.keyCode || event.charCode;
@@ -131,7 +135,7 @@
         if (this.stopPropagation) {
             event.stopPropagation();
         }
-    }
+    };
 
     Keyboard.prototype._handleKeyPress = function(event) {
         var code = event.keyCode || event.charCode;
@@ -145,7 +149,7 @@
         if (this.stopPropagation) {
             event.stopPropagation();
         }
-    }
+    };
 
     /**
      * @function
@@ -165,7 +169,7 @@
                 this._lastmap[prop] = this._keymap[prop];
             }
         }
-    }
+    };
 
     /**
      * @function
@@ -178,7 +182,7 @@
         var id = toKeyIdentifier(key);
 
         return !!(this._keymap[id]);
-    }
+    };
 
     /**
      * @function
@@ -206,16 +210,13 @@
         return (!!!(this._keymap[id]) && !!(this._lastmap[id]));
     };
 
-    zen3d.Keyboard = Keyboard;
-})();
-(function() {
     /**
      * @name Mouse
      * @class A Mouse Device, bound to a DOM Element.
      * @description Create a new Mouse device
      * @param {Element} [element] The Element that the mouse events are attached to
      */
-    var Mouse = function(element) {
+    function Mouse(element) {
         // mouse position
         this.position = {
             x: 0,
@@ -246,7 +247,7 @@
     Mouse.prototype.disableContextMenu = function () {
         if (! this._element) return;
         this._element.addEventListener("contextmenu", this._contextMenuHandler);
-    }
+    };
 
     /**
      * @function
@@ -256,7 +257,7 @@
     Mouse.prototype.enableContextMenu = function () {
         if (! this._element) return;
         this._element.removeEventListener("contextmenu", this._contextMenuHandler);
-    }
+    };
 
     /**
      * @function
@@ -275,7 +276,7 @@
         this._element.addEventListener("mousemove", this._moveHandler, false);
         this._element.addEventListener("mousewheel", this._wheelHandler, false); // WekKit
         this._element.addEventListener("DOMMouseScroll", this._wheelHandler, false); // Gecko
-    }
+    };
 
     /**
      * @function
@@ -290,7 +291,7 @@
         this._element.removeEventListener("mousewheel", this._wheelHandler, false); // WekKit
         this._element.removeEventListener("DOMMouseScroll", this._wheelHandler, false); // Gecko
         this._element = null;
-    }
+    };
 
     /**
      * @function
@@ -304,7 +305,7 @@
         this._lastbuttons[2] = this._buttons[2];
         // set wheel to 0
         this.wheel = 0;
-    }
+    };
 
     /**
      * @function
@@ -315,7 +316,7 @@
      */
     Mouse.prototype.isPressed = function (button) {
         return this._buttons[button];
-    }
+    };
 
     /**
      * @function
@@ -326,7 +327,7 @@
      */
     Mouse.prototype.wasPressed = function (button) {
         return (this._buttons[button] && !this._lastbuttons[button]);
-    }
+    };
 
     /**
      * @function
@@ -337,22 +338,22 @@
      */
     Mouse.prototype.wasReleased = function (button) {
         return (!this._buttons[button] && this._lastbuttons[button]);
-    }
+    };
 
     Mouse.prototype._handleUp = function(event) {
         // disable released button
         this._buttons[event.button] = false;
-    }
+    };
 
     Mouse.prototype._handleDown = function(event) {
         // Store which button has affected
         this._buttons[event.button] = true;
-    }
+    };
 
     Mouse.prototype._handleMove = function(event) {
         this.position.x = event.clientX;
         this.position.y = event.clientY;
-    }
+    };
 
     Mouse.prototype._handleWheel = function(event) {
         // FF uses 'detail' and returns a value in 'no. of lines' to scroll
@@ -364,11 +365,7 @@
         } else {
             this.wheel = 0;
         }
-    }
-
-    zen3d.Mouse = Mouse;
-})();
-(function() {
+    };
 
     var TouchPhase = {
         BEGAN: "began",
@@ -376,16 +373,14 @@
         STATIONARY: "stationary",
         ENDED: "ended",
         CANCELED: "canceled"
-    }
-
-    zen3d.TouchPhase = TouchPhase;
+    };
 
     /**
      * @name TouchPoint
      * @class A Touch Point.
      * @description Create a new Touch Point
      */
-    var TouchPoint = function() {
+    function TouchPoint() {
         this.altitudeAngle = Math.PI / 2; // Value of 0 radians indicates that the stylus is parallel to the surface, pi/2 indicates that it is perpendicular.
         this.azimuthAngle = 0; // Value of 0 radians indicates that the stylus is pointed along the x-axis of the device.
         this.deltaPosition = {x: 0, y: 0}; // The position delta since last change.
@@ -426,19 +421,17 @@
         this.radius.x = touch.radiusX;
         this.radius.y = touch.radiusY;
         // this.tapCount;
-    }
+    };
 
     TouchPoint._pointPool = [];
 
     TouchPoint.create = function() {
         return this._pointPool.pop() || new TouchPoint();
-    }
+    };
 
     TouchPoint.release = function(touchPoint) {
         this._pointPool.push(touchPoint);
-    }
-
-    zen3d.TouchPoint = TouchPoint;
+    };
 
     /**
      * @name Touch
@@ -446,7 +439,7 @@
      * @description Create a new Touch
      * @param {Element} [element] The Element that the touch events are attached to
      */
-    var Touch = function(element) {
+    function Touch(element) {
         this._touchesMap = {};
         this._touches = [];
         this.touchCount = 0; // the count of touch points
@@ -478,7 +471,7 @@
         this._element.addEventListener('touchend', this._endHandler, false);
         this._element.addEventListener('touchmove', this._moveHandler, false);
         this._element.addEventListener('touchcancel', this._cancelHandler, false);
-    }
+    };
 
     /**
      * @function
@@ -493,7 +486,7 @@
             this._element.removeEventListener('touchcancel', this._cancelHandler, false);
         }
         this._element = null;
-    }
+    };
 
     /**
      * @function
@@ -517,7 +510,7 @@
                 this.touchCount--;
             }
         }
-    }
+    };
 
     /**
      * @function
@@ -526,7 +519,7 @@
      */
     Touch.prototype.getTouch = function(index) {
         return this._touches[index];
-    }
+    };
 
     Touch.prototype._getTouch = function(identifier) {
         var touchPoint = this._touchesMap[identifier];
@@ -538,7 +531,7 @@
         }
 
         return touchPoint;
-    }
+    };
 
     Touch.prototype._handleTouchStart = function (event) {
         for(var i = 0; i < event.changedTouches.length; i++) {
@@ -548,7 +541,7 @@
 
             touchPoint.set(touch, TouchPhase.BEGAN);
         }
-    }
+    };
 
     Touch.prototype._handleTouchEnd = function (event) {
         for(var i = 0; i < event.changedTouches.length; i++) {
@@ -558,7 +551,7 @@
 
             touchPoint.set(touch, TouchPhase.ENDED);
         }
-    }
+    };
 
     Touch.prototype._handleTouchMove = function (event) {
         // call preventDefault to avoid issues in Chrome Android:
@@ -572,7 +565,7 @@
 
             touchPoint.set(touch, TouchPhase.MOVED);
         }
-    }
+    };
 
     Touch.prototype._handleTouchCancel = function (event) {
         for(var i = 0; i < event.changedTouches.length; i++) {
@@ -582,7 +575,14 @@
 
             touchPoint.set(touch, TouchPhase.CANCELED);
         }
-    }
+    };
 
+    zen3d = zen3d || {};
+
+    zen3d.Keyboard = Keyboard;
+    zen3d.Mouse = Mouse;
+    zen3d.TouchPhase = TouchPhase;
+    zen3d.TouchPoint = TouchPoint;
     zen3d.Touch = Touch;
-})();
+
+})));

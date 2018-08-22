@@ -21,19 +21,24 @@
 		}
 	</style>
 	<script src="libs/zen3d.js"></script>
-	<script src="libs/zen3d.input.js"></script>
 	<script src="libs/dat.gui.min.js"></script>
+
+	<script src="libs/loaders/GLTFLoader.js"></script>
+	<script src="libs/controls/FreeControls.js"></script>
 
 	<script src="libs/pass/SSAOPass.js"></script>
 	<script src="libs/shaders/SSAOShader.js"></script>
 
-	<script src="libs/shaders/SSAOBlurShader.js"></script>
+	<script src="libs/pass/BlurPass.js"></script>
+	<script src="libs/shaders/BlurShader.js"></script>
 
 	<script src="libs/shaders/ColorAdjustShader.js"></script>
 	<script src="libs/shaders/FXAAShader.js"></script>
 
 	<script src="libs/shaders/BlendShader.js"></script>
+	<script src="libs/shaders/GBufferShader.js"></script>
 	<script src="libs/SuperSampling.js"></script>
+	<script src="libs/GBuffer.js"></script>
 
 	<script src="js/AdvancedRenderer.js"></script>
 
@@ -128,12 +133,8 @@
 			
 			window.camera = camera;
 
-			// add a free controller
-			var controller = new zen3d.FreeController(camera);
-			var keyboard = new zen3d.Keyboard(window);
-			var mouse = new zen3d.Mouse(canvas);
-			controller.bindKeyboard = keyboard;
-			controller.bindMouse = mouse;
+			var controller = new zen3d.FreeControls(camera, canvas);
+			controller.movementSpeed = 0.25;
 
 			camera.lookAt(new zen3d.Vector3(0, 30, 0), new zen3d.Vector3(0, 1, 0));
 
@@ -247,8 +248,6 @@
 				requestAnimationFrame(loop);
 
 				var change = controller.update();
-				keyboard.update();
-				mouse.update();
 
 				renderer.sceneDirty = (renderer.sceneDirty || change);
 
